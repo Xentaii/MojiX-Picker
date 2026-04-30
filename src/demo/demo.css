@@ -167,11 +167,6 @@ pre {
   box-shadow: none;
 }
 
-.showcase-item__frame .mx-picker__content,
-.showcase-item__frame .mx-picker__sidebar {
-  scroll-behavior: auto;
-}
-
 .showcase-item__label {
   display: grid;
   gap: 4px;

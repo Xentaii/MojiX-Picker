@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AccessibilityFixture } from './AccessibilityFixture';
 import { CdnDefaultFixture } from './CdnDefaultFixture';
 import { OfflinePresetFixture } from './OfflinePresetFixture';
@@ -674,44 +674,6 @@ export function App() {
     };
   }, []);
 
-  const showcaseGridRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const grid = showcaseGridRef.current;
-    if (!grid) return;
-
-    const PATCHED = '__mxInstantScroll' as const;
-
-    function patch(content: HTMLDivElement) {
-      type Patched = HTMLDivElement & { [PATCHED]?: boolean };
-      const p = content as Patched;
-      if (p[PATCHED]) return;
-      p[PATCHED] = true;
-      const orig = content.scrollTo.bind(content);
-      content.scrollTo = function (
-        arg?: ScrollToOptions | number,
-        top?: number,
-      ) {
-        if (typeof arg === 'object' && arg !== null) {
-          orig({ ...arg, behavior: 'auto' });
-        } else if (arg !== undefined && top !== undefined) {
-          orig({ left: arg, top, behavior: 'auto' });
-        }
-      } as typeof content.scrollTo;
-    }
-
-    function applyAll() {
-      grid
-        ?.querySelectorAll<HTMLDivElement>('.mx-picker__content')
-        .forEach(patch);
-    }
-
-    applyAll();
-    const observer = new MutationObserver(applyAll);
-    observer.observe(grid, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
-
   function handleEmojiSelect(emoji: EmojiSelection) {
     setLastEmoji(emoji);
   }
@@ -860,7 +822,7 @@ export function App() {
             sets. Drop any of these straight into your app.
           </p>
         </div>
-        <div className="showcase-grid" ref={showcaseGridRef}>
+        <div className="showcase-grid">
           {SHOWCASE_PRESETS.map((preset) => (
             <article key={preset.id} className="showcase-item">
               <div className="showcase-item__frame">
@@ -879,6 +841,7 @@ export function App() {
                       ? undefined
                       : NATIVE_FALLBACK_SOURCE
                   }
+                  virtualization={false}
                 />
               </div>
               <div className="showcase-item__label">
