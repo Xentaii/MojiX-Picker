@@ -74,6 +74,34 @@ describe('picker UI theming hooks', () => {
     ).toBe('rgb(40, 50, 60)');
   });
 
+  it('passes virtualization settings through the root component', async () => {
+    const customEmojis = Array.from({ length: 205 }, (_, index) => ({
+      id: `custom-${index}`,
+      name: `Custom ${index}`,
+      native: 'x',
+    }));
+
+    const { container } = render(
+      <EmojiPicker
+        showPreview={false}
+        showRecents={false}
+        showSkinTones={false}
+        categories={hiddenSystemCategories}
+        customEmojis={customEmojis}
+        virtualization={false}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        container.querySelectorAll('[data-mx-slot="emoji"]'),
+      ).toHaveLength(customEmojis.length);
+    });
+    expect(
+      container.querySelector('[data-mx-slot="gridPlaceholder"]'),
+    ).toBeNull();
+  });
+
   it('re-renders only the affected emoji cells when hover changes', async () => {
     const renderCounts = new Map<string, number>();
     const renderEmoji = vi.fn((emoji: { id: string; name: string }) => {
