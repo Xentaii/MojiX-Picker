@@ -4,7 +4,7 @@
 
 React emoji picker for web apps.
 
-<img src="./docs/assets/preview.svg" alt="MojiX picker preview" width="640" />
+<img src="./docs/assets/preview-wine.svg" alt="MojiX picker preview" width="640" />
 
 [![npm](https://img.shields.io/npm/v/mojix-picker?style=flat-square)](https://www.npmjs.com/package/mojix-picker)
 [![downloads](https://img.shields.io/npm/dm/mojix-picker?style=flat-square)](https://www.npmjs.com/package/mojix-picker)
