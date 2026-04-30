@@ -191,12 +191,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Xentaii/MojiX.git"
+    "url": "git+https://github.com/Xentaii/MojiX-Picker.git"
   },
   "bugs": {
-    "url": "https://github.com/Xentaii/MojiX/issues"
+    "url": "https://github.com/Xentaii/MojiX-Picker/issues"
   },
-  "homepage": "https://github.com/Xentaii/MojiX#readme",
+  "homepage": "https://github.com/Xentaii/MojiX-Picker#readme",
   "publishConfig": {
     "access": "public",
     "provenance": true

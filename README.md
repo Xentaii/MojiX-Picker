@@ -9,11 +9,11 @@ React emoji picker for web apps.
 [![npm](https://img.shields.io/npm/v/mojix-picker?style=flat-square)](https://www.npmjs.com/package/mojix-picker)
 [![downloads](https://img.shields.io/npm/dm/mojix-picker?style=flat-square)](https://www.npmjs.com/package/mojix-picker)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/mojix-picker?style=flat-square)](https://bundlephobia.com/package/mojix-picker)
-[![CI](https://img.shields.io/github/actions/workflow/status/Xentaii/MojiX/ci.yml?branch=main&style=flat-square)](https://github.com/Xentaii/MojiX/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/Xentaii/MojiX-Picker/ci.yml?branch=main&style=flat-square)](https://github.com/Xentaii/MojiX-Picker/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/mojix-picker?style=flat-square)](./LICENSE)
 [![React](https://img.shields.io/badge/react-18%20%7C%2019-61dafb?style=flat-square)](https://react.dev)
 
-[Live Demo](https://xentaii.github.io/MojiX/) - [npm](https://www.npmjs.com/package/mojix-picker) - [API Docs](./docs/api/README.md) - [Migration Guide](./docs/MIGRATION.md)
+[Live Demo](https://xentaii.github.io/MojiX-Picker/) - [npm](https://www.npmjs.com/package/mojix-picker) - [API Docs](./docs/api/README.md) - [Migration Guide](./docs/MIGRATION.md)
 
 </div>
 
@@ -319,8 +319,8 @@ default app bundle does not inline the full emoji dataset unless the app imports
 ## 🛠️ Development
 
 ```bash
-git clone https://github.com/Xentaii/MojiX
-cd MojiX
+git clone https://github.com/Xentaii/MojiX-Picker
+cd MojiX-Picker
 npm install
 npm run emoji:data
 npm run dev
@@ -360,7 +360,7 @@ scripts/
 
 ## 📖 Docs
 
-- [Live Demo](https://xentaii.github.io/MojiX/)
+- [Live Demo](https://xentaii.github.io/MojiX-Picker/)
 - [API reference](./docs/api/README.md)
 - [Migration Guide](./docs/MIGRATION.md)
 - [Bundle size roadmap](./docs/BUNDLE_SIZE_ROADMAP.md)

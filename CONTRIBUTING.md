@@ -5,8 +5,8 @@ Thanks for your interest. This document covers how to get set up, the convention
 ## Getting started
 
 ```bash
-git clone https://github.com/Xentaii/MojiX
-cd MojiX
+git clone https://github.com/Xentaii/MojiX-Picker
+cd MojiX-Picker
 npm install
 npm run emoji:data
 npm run dev   # launch the playground at http://localhost:5173
