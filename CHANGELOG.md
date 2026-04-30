@@ -42,6 +42,26 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Hovering an emoji in recents no longer highlights the duplicate cell in its source category.
 
+## [0.5.5] - 2026-04-19
+
+### Added
+
+- Virtualized emoji grid that renders only visible rows, keeping large categories smooth on lower-end hardware.
+- Built-in locale packs for `de`, `es`, `fr`, `ja`, `pt`, and `uk` with matching `mojix-picker/locales/<code>` subpath exports.
+- `mojix-picker/style.css` subpath export so consumers can import the stylesheet via the package name.
+- Playwright accessibility coverage for the picker, wired into CI alongside the existing Vitest suite.
+- `scripts/check-package.mjs` pack-check helper to validate the publishable tarball layout.
+
+### Changed
+
+- Sprite sheet loader and related types reworked to support the virtualized grid and reduce redundant paint work in Chrome.
+- Emoji data generator emits per-locale JSON for the expanded locale set, keeping per-locale bundle sizes predictable.
+
+### Fixed
+
+- Reduced hover/re-render cost in the emoji grid with layout/paint containment and memoized cells.
+- Chrome/WebKit built-in search clear control stays hidden so only the custom clear button is visible.
+
 ## [0.5.1] - 2026-04-19
 
 ### Fixed
