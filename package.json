@@ -154,7 +154,7 @@
     "node": ">=18.17"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run emoji:data && vite",
     "emoji:data": "node ./scripts/build-emoji-data.mjs",
     "build:demo": "npm run emoji:data && npm run build:demo:only",
     "build:demo:only": "vite build",
@@ -165,10 +165,12 @@
     "prepack": "npm run build:package",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build:package",
     "pack:check": "node ./scripts/check-package.mjs",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.lib.json --noEmit",
-    "test": "vitest run",
-    "test:e2e": "playwright test",
-    "test:watch": "vitest",
+    "typecheck": "npm run emoji:data && npm run typecheck:only",
+    "typecheck:only": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.lib.json --noEmit",
+    "test": "npm run emoji:data && npm run test:unit",
+    "test:unit": "vitest run",
+    "test:e2e": "npm run emoji:data && playwright test",
+    "test:watch": "npm run emoji:data && vitest",
     "preview": "vite preview"
   },
   "keywords": [
