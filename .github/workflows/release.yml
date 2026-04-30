@@ -36,9 +36,6 @@ on:
         default: true
         type: boolean
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 permissions:
   contents: write
 
@@ -50,7 +47,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -132,7 +129,7 @@ jobs:
           git push origin "refs/tags/${tag}"
 
       - name: Create or update release page
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           name: MojiX ${{ steps.meta.outputs.version }}
