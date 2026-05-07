@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  computeAdaptiveOverscanRows,
   computeEmojiGridPlaceholderHeight,
   computeEmojiGridVirtualWindow,
   expandEmojiGridVirtualWindow,
@@ -12,17 +13,31 @@ describe('grid virtualization helpers', () => {
   it('resolves default virtualization settings', () => {
     expect(resolveEmojiGridVirtualization()).toEqual({
       enabled: true,
-      overscanRows: 4,
+      overscanRows: 8,
+      adaptiveOverscan: true,
     });
     expect(resolveEmojiGridVirtualization(false)).toEqual({
       enabled: false,
       overscanRows: 0,
+      adaptiveOverscan: false,
     });
     expect(
       resolveEmojiGridVirtualization({ enabled: true, overscanRows: 6 }),
     ).toEqual({
       enabled: true,
       overscanRows: 6,
+      adaptiveOverscan: true,
+    });
+    expect(
+      resolveEmojiGridVirtualization({
+        enabled: true,
+        overscanRows: 6,
+        adaptiveOverscan: false,
+      }),
+    ).toEqual({
+      enabled: true,
+      overscanRows: 6,
+      adaptiveOverscan: false,
     });
   });
 
@@ -73,6 +88,76 @@ describe('grid virtualization helpers', () => {
       beforeRows: 0,
       afterRows: 9,
     });
+  });
+
+  it('shrinks overscan when the viewport is idle', () => {
+    expect(
+      computeAdaptiveOverscanRows({
+        baseOverscanRows: 8,
+        velocityPxPerMs: 0,
+        rowHeight: 40,
+      }),
+    ).toBe(6);
+    expect(
+      computeAdaptiveOverscanRows({
+        baseOverscanRows: 4,
+        velocityPxPerMs: 0,
+        rowHeight: 40,
+      }),
+    ).toBe(3);
+    // Very small base still keeps at least one overscan row.
+    expect(
+      computeAdaptiveOverscanRows({
+        baseOverscanRows: 0,
+        velocityPxPerMs: 0,
+        rowHeight: 40,
+      }),
+    ).toBe(1);
+  });
+
+  it('expands overscan with rising scroll velocity', () => {
+    const slow = computeAdaptiveOverscanRows({
+      baseOverscanRows: 8,
+      velocityPxPerMs: 0.5, // very slow
+      rowHeight: 40,
+    });
+    const fast = computeAdaptiveOverscanRows({
+      baseOverscanRows: 8,
+      velocityPxPerMs: 5, // wheel/trackpad burst
+      rowHeight: 40,
+    });
+
+    expect(slow).toBeGreaterThanOrEqual(8);
+    expect(fast).toBeGreaterThan(slow);
+    // Fast scroll over 100ms at 5px/ms covers ~12 rows on top of base 8.
+    expect(fast).toBeGreaterThanOrEqual(20);
+  });
+
+  it('clamps the overscan to a sensible upper bound', () => {
+    expect(
+      computeAdaptiveOverscanRows({
+        baseOverscanRows: 8,
+        velocityPxPerMs: 999,
+        rowHeight: 40,
+      }),
+    ).toBeLessThanOrEqual(48);
+  });
+
+  it('returns the idle value for non-finite or non-positive inputs', () => {
+    expect(
+      computeAdaptiveOverscanRows({
+        baseOverscanRows: 8,
+        velocityPxPerMs: Number.NaN,
+        rowHeight: 40,
+      }),
+    ).toBe(6);
+    expect(
+      computeAdaptiveOverscanRows({
+        baseOverscanRows: 8,
+        velocityPxPerMs: 5,
+        rowHeight: 0,
+      }),
+    ).toBe(6);
   });
 
   it('finds the active category from cached section offsets', () => {

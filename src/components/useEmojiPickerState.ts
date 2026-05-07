@@ -23,11 +23,14 @@ import {
   DEFAULT_SKIN_TONE_STORAGE_KEY,
   getDefaultCategoryOrder,
   humanizeCategoryId,
+  isBuiltInCategoryId,
   isSystemCategoryId,
 } from '../core/constants';
 import {
   createEmojiSelection,
   getEmojiDataStoreSnapshot,
+  isEmojiCategoryLoaded,
+  loadEmojiCategoryShard,
   loadEmojiData,
   peekUnicodeEmojiByCategory,
   peekUnicodeEmojiById,
@@ -50,6 +53,7 @@ import {
   createSpriteSheetCacheKey,
   defaultSpriteSheet,
   resolveSpriteSheetConfig,
+  resolveSpriteSheetUrl,
 } from '../core/sprites';
 import {
   createLocalStorageRecentStore,
@@ -58,9 +62,10 @@ import {
 } from '../core/storage';
 
 // Used as the default asset source when the caller provides no sprite sheet
-// and no explicit asset source — "just works" with native OS emoji.
+// and no explicit asset source, so "just works" uses native OS emoji.
 const DEFAULT_NATIVE_SOURCE = createNativeAssetSource();
 import type {
+  EmojiAssetSource,
   EmojiCategoryConfig,
   EmojiCategoryIconConfig,
   EmojiCategoryIconInput,
@@ -233,6 +238,7 @@ export interface EmojiPickerState {
   localeDefinition: ReturnType<typeof resolveLocaleDefinition>;
   labelSet: EmojiPickerLabels;
   activeSpriteSheet: ReturnType<typeof resolveSpriteSheetConfig>;
+  retainedSpriteSheetUrl: string | null;
   ready: boolean;
   handleSelectEmoji: (emoji: EmojiRenderable) => void;
   handleCategoryClick: (categoryId: EmojiCategoryId) => void;
@@ -286,6 +292,14 @@ function resolveRuntimeSpriteAsset(
   return { key, url };
 }
 
+function sourceCanUseSpriteSheet(source: EmojiAssetSource | undefined) {
+  return (
+    source?.type === 'spriteSheet' ||
+    source?.type === 'mixed' ||
+    source === undefined
+  );
+}
+
 export function useEmojiPickerState({
   value,
   searchQuery: controlledSearchQuery,
@@ -319,6 +333,7 @@ export function useEmojiPickerState({
   labels,
   colors,
   virtualization,
+  loadCategoryShards = false,
   autoScrollCategoriesOnHover = true,
   categories,
   categoryIcons,
@@ -469,6 +484,13 @@ export function useEmojiPickerState({
   }, [resolvedRecentStore]);
 
   useEffect(() => {
+    if (loadCategoryShards) {
+      // In shard mode the consumer opts in to category-by-category fetching;
+      // skip the bootstrap auto-load and rely on the per-category effect
+      // below to fetch what the user navigates to.
+      return;
+    }
+
     if (emojiDataSnapshot.ready) {
       didRequestEmojiDataRef.current = false;
       return;
@@ -485,7 +507,40 @@ export function useEmojiPickerState({
     loadEmojiData().catch(() => {
       return;
     });
-  }, [emojiDataSnapshot.ready, emojiDataSnapshot.status]);
+  }, [emojiDataSnapshot.ready, emojiDataSnapshot.status, loadCategoryShards]);
+
+  const requestedShardsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!loadCategoryShards) {
+      return;
+    }
+
+    if (
+      isBuiltInCategoryId(activeCategory) &&
+      !isEmojiCategoryLoaded(activeCategory) &&
+      !requestedShardsRef.current.has(activeCategory)
+    ) {
+      requestedShardsRef.current.add(activeCategory);
+      loadEmojiCategoryShard(activeCategory).catch(() => {
+        requestedShardsRef.current.delete(activeCategory);
+      });
+    }
+
+    // Default activeCategory is often 'recent', which has no shard. If the
+    // store is still empty we kick off 'smileys' so the picker has something
+    // to show as the user opens it.
+    if (
+      !isBuiltInCategoryId(activeCategory) &&
+      !isEmojiCategoryLoaded('smileys') &&
+      !requestedShardsRef.current.has('smileys')
+    ) {
+      requestedShardsRef.current.add('smileys');
+      loadEmojiCategoryShard('smileys').catch(() => {
+        requestedShardsRef.current.delete('smileys');
+      });
+    }
+  }, [activeCategory, emojiDataSnapshot.version, loadCategoryShards]);
 
   useEffect(() => {
     if (
@@ -576,6 +631,27 @@ export function useEmojiPickerState({
     }
   }, [isActiveCategoryControlled, resolvedDefaultActiveCategory]);
 
+  // When the caller provides no spriteSheet and no explicit asset source, fall
+  // back to native OS emoji so <EmojiPicker /> works with zero config.
+  const zeroConfigSource =
+    spriteSheetProp === undefined &&
+    assetSource === undefined &&
+    gridAssetSource === undefined
+      ? DEFAULT_NATIVE_SOURCE
+      : undefined;
+
+  const resolvedGridAssetSource = gridAssetSource ?? assetSource ?? zeroConfigSource;
+  const resolvedPreviewAssetSource =
+    previewAssetSource ?? assetSource ?? zeroConfigSource ?? resolvedGridAssetSource;
+  const shouldRetainSpriteSheet =
+    zeroConfigSource === undefined &&
+    (sourceCanUseSpriteSheet(resolvedGridAssetSource) ||
+      sourceCanUseSpriteSheet(resolvedPreviewAssetSource));
+  const shouldWarmSpriteSheetOnMount =
+    resolvedSpriteSheet.cache.preload !== 'manual' &&
+    (resolvedSpriteSheet.cache.enabled ||
+      shouldRetainSpriteSheet);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -583,10 +659,7 @@ export function useEmojiPickerState({
       resolveRuntimeSpriteAsset(resolvedSpriteSheet, spriteSheetCacheKey),
     );
 
-    if (
-      !resolvedSpriteSheet.cache.enabled ||
-      resolvedSpriteSheet.cache.preload !== 'mount'
-    ) {
+    if (!shouldWarmSpriteSheetOnMount) {
       return;
     }
 
@@ -608,7 +681,7 @@ export function useEmojiPickerState({
     return () => {
       cancelled = true;
     };
-  }, [resolvedSpriteSheet, spriteSheetCacheKey]);
+  }, [resolvedSpriteSheet, shouldWarmSpriteSheetOnMount, spriteSheetCacheKey]);
 
   const activeSpriteSheet = useMemo(
     () =>
@@ -617,19 +690,13 @@ export function useEmojiPickerState({
         : resolvedSpriteSheet,
     [resolvedSpriteSheet, runtimeSpriteAsset, spriteSheetCacheKey],
   );
-  // When the caller provides no spriteSheet and no explicit asset source, fall
-  // back to native OS emoji so <EmojiPicker /> works with zero config.
-  const zeroConfigSource =
-    spriteSheetProp === undefined &&
-    assetSource === undefined &&
-    gridAssetSource === undefined
-      ? DEFAULT_NATIVE_SOURCE
-      : undefined;
-
-  const resolvedGridAssetSource = gridAssetSource ?? assetSource ?? zeroConfigSource;
-  const resolvedPreviewAssetSource =
-    previewAssetSource ?? assetSource ?? zeroConfigSource ?? resolvedGridAssetSource;
-
+  const retainedSpriteSheetUrl = useMemo(
+    () =>
+      shouldRetainSpriteSheet
+        ? resolveSpriteSheetUrl(activeSpriteSheet)
+        : null,
+    [activeSpriteSheet, shouldRetainSpriteSheet],
+  );
   const recentSectionEmojis = useMemo(() => {
     if (!resolvedRecentConfig.enabled) {
       return [] as EmojiRenderable[];
@@ -753,7 +820,16 @@ export function useEmojiPickerState({
         searchConfig,
       );
 
-      if (visibleEmoji.length === 0) {
+      // In shard mode, keep an empty placeholder section for unloaded
+      // built-in categories so the sidebar still shows their nav button.
+      // Clicking it triggers the per-category shard fetch via the active
+      // category effect.
+      const keepEmptyPlaceholder =
+        loadCategoryShards &&
+        isBuiltInCategoryId(categoryId) &&
+        !isSearching;
+
+      if (visibleEmoji.length === 0 && !keepEmptyPlaceholder) {
         continue;
       }
 
@@ -821,6 +897,7 @@ export function useEmojiPickerState({
     emojiDataSnapshot.version,
     labelSet.custom,
     labelSet.recents,
+    loadCategoryShards,
     localeDefinition,
     recentSectionEmojis,
     resolvedRecentConfig.enabled,
@@ -1056,6 +1133,7 @@ export function useEmojiPickerState({
     localeDefinition,
     labelSet,
     activeSpriteSheet,
+    retainedSpriteSheetUrl,
     ready,
     handleSelectEmoji,
     handleCategoryClick,

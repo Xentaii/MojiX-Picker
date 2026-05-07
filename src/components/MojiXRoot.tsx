@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { createContext, useContext, useMemo } from 'react';
 import { SKIN_TONE_OPTIONS } from '../core/constants';
 import { resolveEmojiAsset } from '../core/assets';
@@ -22,6 +22,15 @@ import {
 } from './useEmojiPickerState';
 
 const MojiXContext = createContext<EmojiPickerState | null>(null);
+
+const retainedSpriteSheetStyle = {
+  position: 'fixed',
+  width: 1,
+  height: 1,
+  opacity: 0,
+  pointerEvents: 'none',
+  transform: 'translate(-9999px, -9999px)',
+} satisfies CSSProperties;
 
 export function useMojiXContext() {
   const context = useContext(MojiXContext);
@@ -123,6 +132,7 @@ export function MojiXRoot({
   labels,
   colors,
   virtualization,
+  loadCategoryShards,
   autoScrollCategoriesOnHover,
   categories,
   categoryIcons,
@@ -177,6 +187,7 @@ export function MojiXRoot({
     labels,
     colors,
     virtualization,
+    loadCategoryShards,
     autoScrollCategoriesOnHover,
     categories,
     categoryIcons,
@@ -217,6 +228,16 @@ export function MojiXRoot({
         data-mx-unstyled={state.unstyled ? 'true' : undefined}
         data-loading={state.loading ? 'true' : undefined}
       >
+        {state.retainedSpriteSheetUrl ? (
+          <img
+            src={state.retainedSpriteSheetUrl}
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+            loading="eager"
+            style={retainedSpriteSheetStyle}
+          />
+        ) : null}
         {renderChild(children, state)}
       </div>
     </MojiXContext.Provider>

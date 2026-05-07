@@ -490,12 +490,26 @@ export interface EmojiPickerColors {
 export interface EmojiPickerVirtualization {
   enabled?: boolean;
   overscanRows?: number;
+  /**
+   * When `true` (default), the rendered window expands during fast scrolling
+   * to keep upcoming rows mounted, and contracts when idle to reduce DOM
+   * pressure. Set to `false` to keep `overscanRows` constant regardless of
+   * scroll velocity.
+   */
+  adaptiveOverscan?: boolean;
 }
 
 export interface EmojiPickerProps
   extends Omit<HTMLAttributes<HTMLDivElement>, 'onChange'> {
   colors?: EmojiPickerColors;
   virtualization?: boolean | EmojiPickerVirtualization;
+  /**
+   * When `true`, the picker fetches missing per-category data shards on
+   * demand as the user navigates between categories. Use together with
+   * {@link preloadEmojiPicker} `{ shards: [...] }` to ship a smaller initial
+   * payload and lazy-load the rest.
+   */
+  loadCategoryShards?: boolean;
   autoScrollCategoriesOnHover?: boolean;
   value?: string;
   searchQuery?: string;

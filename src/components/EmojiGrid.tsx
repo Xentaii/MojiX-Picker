@@ -40,6 +40,7 @@ import {
   getSlotClassName,
   getSlotStyle,
 } from './utils';
+import { loadVirtualizedEmojiGridModule } from './virtualizedGridLoader';
 
 export type {
   EmojiGridHandle,
@@ -49,7 +50,7 @@ export type {
 export const VIRTUALIZE_EMOJI_THRESHOLD = 200;
 
 const LazyVirtualizedEmojiGrid = lazy(async () => {
-  const module = await import('./VirtualizedEmojiGrid');
+  const module = await loadVirtualizedEmojiGridModule();
 
   return {
     default: module.VirtualizedEmojiGrid,
@@ -873,20 +874,44 @@ function NaiveEmojiGrid({
   );
 }
 
+function EmojiGridSuspenseFallback({
+  unstyled,
+  classNames,
+  styles,
+}: EmojiGridProps) {
+  const slotOptions = useMemo(
+    () => ({ unstyled, classNames, styles }),
+    [classNames, styles, unstyled],
+  );
+
+  return (
+    <div
+      className={getSlotClassName('content', slotOptions)}
+      style={getSlotStyle('content', slotOptions)}
+      data-mx-slot="content"
+      aria-busy="true"
+    >
+      <div
+        className={getSlotClassName('gridPlaceholder', slotOptions)}
+        style={getSlotStyle(
+          'gridPlaceholder',
+          slotOptions,
+          { minHeight: '100%' },
+        )}
+        aria-hidden="true"
+        data-mx-slot="gridPlaceholder"
+      />
+    </div>
+  );
+}
+
 export function EmojiGrid(props: EmojiGridProps) {
   if (!shouldUseVirtualizedGrid(props)) {
     return <NaiveEmojiGrid {...props} />;
   }
 
   return (
-    <Suspense
-      fallback={
-        <NaiveEmojiGrid
-          {...props}
-          renderLimit={VIRTUALIZE_EMOJI_THRESHOLD}
-        />
-      }
-    >
+    <Suspense fallback={<EmojiGridSuspenseFallback {...props} />}>
       <LazyVirtualizedEmojiGrid {...props} />
     </Suspense>
   );

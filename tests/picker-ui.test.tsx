@@ -47,7 +47,7 @@ describe('picker UI theming hooks', () => {
     );
   });
 
-  it('supports per-item emoji and category hover colors', () => {
+  it('supports per-item emoji and category hover colors', async () => {
     const { container } = render(
       <EmojiPicker
         colors={{
@@ -57,14 +57,18 @@ describe('picker UI theming hooks', () => {
       />,
     );
 
-    const firstEmoji = container.querySelector(
-      '[data-mx-slot="emoji"]',
-    ) as HTMLButtonElement | null;
+    const firstEmoji = await waitFor(() => {
+      const emoji = container.querySelector(
+        '[data-mx-slot="emoji"]',
+      ) as HTMLButtonElement | null;
+
+      expect(emoji).not.toBeNull();
+      return emoji!;
+    });
     const firstCategoryButton = container.querySelector(
       '[data-mx-slot="navButton"]',
     ) as HTMLButtonElement | null;
 
-    expect(firstEmoji).not.toBeNull();
     expect(firstCategoryButton).not.toBeNull();
     expect(firstEmoji?.style.getPropertyValue('--mx-emoji-hover')).toBe(
       'rgb(10, 20, 30)',
@@ -100,6 +104,40 @@ describe('picker UI theming hooks', () => {
     expect(
       container.querySelector('[data-mx-slot="gridPlaceholder"]'),
     ).toBeNull();
+  });
+
+  it('does not render a retained sprite sheet for native zero-config usage', async () => {
+    const { container } = render(<EmojiPicker />);
+
+    await waitFor(() => {
+      expect(
+        container.querySelectorAll('[data-mx-slot="emoji"]').length,
+      ).toBeGreaterThan(0);
+    });
+
+    const retainedImages = container.querySelectorAll(
+      'img[aria-hidden="true"]',
+    );
+    expect(retainedImages).toHaveLength(0);
+  });
+
+  it('retains explicit sprite sheets in the root for WebView scrolling', () => {
+    const { container } = render(
+      <EmojiPicker
+        spriteSheet={{
+          source: 'custom',
+          url: 'https://example.com/emoji.png',
+        }}
+      />,
+    );
+
+    const retainedSpriteSheet = container.querySelector(
+      'img[aria-hidden="true"][src="https://example.com/emoji.png"]',
+    ) as HTMLImageElement | null;
+
+    expect(retainedSpriteSheet).not.toBeNull();
+    expect(retainedSpriteSheet?.getAttribute('loading')).toBe('eager');
+    expect(retainedSpriteSheet?.getAttribute('decoding')).toBe('async');
   });
 
   it('re-renders only the affected emoji cells when hover changes', async () => {

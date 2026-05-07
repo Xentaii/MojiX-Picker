@@ -29,6 +29,7 @@ import type {
 import { EmojiCategoryIcon } from './EmojiCategoryIcon';
 import { EmojiSprite } from './EmojiSprite';
 import {
+  computeAdaptiveOverscanRows,
   computeEmojiGridPlaceholderHeight,
   computeEmojiGridVirtualWindow,
   createFullEmojiGridVirtualWindow,
@@ -518,6 +519,16 @@ export function VirtualizedEmojiGrid({
   const pendingFocusRef = useRef<TabStop | null>(null);
   const virtualizationFrameRef = useRef<number | null>(null);
   const layoutMeasureFrameRef = useRef<number | null>(null);
+  const scrollVelocityRef = useRef<{
+    lastScrollTop: number;
+    lastScrollTime: number;
+    velocityPxPerMs: number;
+  }>({
+    lastScrollTop: 0,
+    lastScrollTime: 0,
+    velocityPxPerMs: 0,
+  });
+  const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutMetricsRef = useRef<EmojiGridLayoutMetrics>(
     EMPTY_LAYOUT_METRICS,
   );
@@ -717,6 +728,14 @@ export function VirtualizedEmojiGrid({
           ];
         }
 
+        const effectiveOverscanRows = virtualizationConfig.adaptiveOverscan
+          ? computeAdaptiveOverscanRows({
+              baseOverscanRows: virtualizationConfig.overscanRows,
+              velocityPxPerMs: scrollVelocityRef.current.velocityPxPerMs,
+              rowHeight: sectionLayout.rowHeight,
+            })
+          : virtualizationConfig.overscanRows;
+
         let window = computeEmojiGridVirtualWindow({
           rowCount,
           scrollTop: container.scrollTop,
@@ -724,7 +743,7 @@ export function VirtualizedEmojiGrid({
           gridTop: sectionLayout.gridTop,
           rowHeight: sectionLayout.rowHeight,
           rowGap: sectionLayout.rowGap,
-          overscanRows: virtualizationConfig.overscanRows,
+          overscanRows: effectiveOverscanRows,
         });
 
         const pinnedRows = [
@@ -752,6 +771,7 @@ export function VirtualizedEmojiGrid({
     columns,
     preparedSections,
     tabStop,
+    virtualizationConfig.adaptiveOverscan,
     virtualizationConfig.enabled,
     virtualizationConfig.overscanRows,
   ]);
@@ -766,6 +786,47 @@ export function VirtualizedEmojiGrid({
       measureVirtualWindows();
     });
   }, [measureVirtualWindows]);
+
+  const trackScrollVelocity = useCallback(() => {
+    const container = scrollRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const tracking = scrollVelocityRef.current;
+    const now =
+      typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now()
+        : Date.now();
+    const dt = now - tracking.lastScrollTime;
+
+    if (dt > 0 && dt < 200 && tracking.lastScrollTime > 0) {
+      const dy = Math.abs(container.scrollTop - tracking.lastScrollTop);
+      tracking.velocityPxPerMs = dy / dt;
+    } else {
+      tracking.velocityPxPerMs = 0;
+    }
+
+    tracking.lastScrollTop = container.scrollTop;
+    tracking.lastScrollTime = now;
+
+    if (scrollIdleTimerRef.current !== null) {
+      clearTimeout(scrollIdleTimerRef.current);
+    }
+
+    scrollIdleTimerRef.current = setTimeout(() => {
+      scrollIdleTimerRef.current = null;
+      scrollVelocityRef.current.velocityPxPerMs = 0;
+      // Recompute the window once we settle so it shrinks back to idle size.
+      scheduleVirtualWindowMeasure();
+    }, 200);
+  }, [scheduleVirtualWindowMeasure]);
+
+  const handleVirtualizedScroll = useCallback(() => {
+    trackScrollVelocity();
+    scheduleVirtualWindowMeasure();
+  }, [scheduleVirtualWindowMeasure, trackScrollVelocity]);
 
   const scheduleLayoutMeasure = useCallback(() => {
     if (layoutMeasureFrameRef.current !== null) {
@@ -829,18 +890,18 @@ export function VirtualizedEmojiGrid({
       return;
     }
 
-    container.addEventListener('scroll', scheduleVirtualWindowMeasure, {
+    container.addEventListener('scroll', handleVirtualizedScroll, {
       passive: true,
     });
 
     return () => {
       container.removeEventListener(
         'scroll',
-        scheduleVirtualWindowMeasure,
+        handleVirtualizedScroll,
       );
     };
   }, [
-    scheduleVirtualWindowMeasure,
+    handleVirtualizedScroll,
     virtualizationConfig.enabled,
   ]);
 
@@ -852,6 +913,11 @@ export function VirtualizedEmojiGrid({
 
       if (layoutMeasureFrameRef.current !== null) {
         cancelAnimationFrame(layoutMeasureFrameRef.current);
+      }
+
+      if (scrollIdleTimerRef.current !== null) {
+        clearTimeout(scrollIdleTimerRef.current);
+        scrollIdleTimerRef.current = null;
       }
     };
   }, []);

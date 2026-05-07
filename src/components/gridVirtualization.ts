@@ -3,6 +3,7 @@ import type { EmojiPickerVirtualization } from '../core/types';
 export interface ResolvedEmojiGridVirtualization {
   enabled: boolean;
   overscanRows: number;
+  adaptiveOverscan: boolean;
 }
 
 export interface EmojiGridVirtualWindow {
@@ -14,7 +15,10 @@ export interface EmojiGridVirtualWindow {
   rowGap: number;
 }
 
-const DEFAULT_OVERSCAN_ROWS = 4;
+const DEFAULT_OVERSCAN_ROWS = 8;
+const ADAPTIVE_OVERSCAN_LOOKAHEAD_MS = 100;
+const ADAPTIVE_OVERSCAN_MAX_ROWS = 48;
+const ADAPTIVE_OVERSCAN_IDLE_FACTOR = 0.75;
 
 export function resolveEmojiGridVirtualization(
   virtualization?: boolean | EmojiPickerVirtualization,
@@ -23,6 +27,7 @@ export function resolveEmojiGridVirtualization(
     return {
       enabled: false,
       overscanRows: 0,
+      adaptiveOverscan: false,
     };
   }
 
@@ -30,6 +35,7 @@ export function resolveEmojiGridVirtualization(
     return {
       enabled: true,
       overscanRows: DEFAULT_OVERSCAN_ROWS,
+      adaptiveOverscan: true,
     };
   }
 
@@ -39,7 +45,42 @@ export function resolveEmojiGridVirtualization(
       0,
       Math.floor(virtualization.overscanRows ?? DEFAULT_OVERSCAN_ROWS),
     ),
+    adaptiveOverscan: virtualization.adaptiveOverscan ?? true,
   };
+}
+
+/**
+ * Returns the number of rows to render outside the viewport, scaled by the
+ * current scroll velocity. When the user scrolls quickly we mount more rows
+ * ahead of time to cover the upcoming travel; when idle we shrink the window
+ * to reduce DOM pressure.
+ *
+ * `velocityPxPerMs` should be the absolute value of recent scroll delta
+ * divided by elapsed milliseconds. Pass `0` (or any non-positive value) to
+ * indicate the viewport is idle.
+ */
+export function computeAdaptiveOverscanRows(options: {
+  baseOverscanRows: number;
+  velocityPxPerMs: number;
+  rowHeight: number;
+}): number {
+  const base = Math.max(0, Math.floor(options.baseOverscanRows));
+  const { velocityPxPerMs, rowHeight } = options;
+
+  if (
+    !Number.isFinite(velocityPxPerMs) ||
+    velocityPxPerMs <= 0 ||
+    !Number.isFinite(rowHeight) ||
+    rowHeight <= 0
+  ) {
+    return Math.max(1, Math.round(base * ADAPTIVE_OVERSCAN_IDLE_FACTOR));
+  }
+
+  const lookaheadRows =
+    (velocityPxPerMs * ADAPTIVE_OVERSCAN_LOOKAHEAD_MS) / rowHeight;
+  const adaptive = Math.ceil(base + lookaheadRows);
+
+  return Math.min(ADAPTIVE_OVERSCAN_MAX_ROWS, Math.max(base, adaptive));
 }
 
 export function getEmojiGridRowCount(

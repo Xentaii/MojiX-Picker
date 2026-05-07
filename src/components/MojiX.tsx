@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from 'react';
+import { useEffect, type HTMLAttributes } from 'react';
 import { SKIN_TONE_OPTIONS } from '../core/constants';
 import type {
   EmojiCategoryId,
@@ -12,6 +12,7 @@ import { EmojiPreview } from './EmojiPreview';
 import { EmojiSearchField } from './EmojiSearchField';
 import { EmojiSidebar } from './EmojiSidebar';
 import { EmojiSkinToneButton } from './EmojiSkinToneButton';
+import { preloadVirtualizedEmojiGrid } from './virtualizedGridLoader';
 import {
   getSlotClassName,
   getSlotStyle,
@@ -28,6 +29,15 @@ import {
   type RenderChild,
 } from './MojiXRoot';
 import type { EmojiPickerState } from './useEmojiPickerState';
+
+function shouldPreloadVirtualizedGrid(
+  virtualization: EmojiPickerProps['virtualization'],
+) {
+  return !(
+    virtualization === false ||
+    (typeof virtualization === 'object' && virtualization.enabled === false)
+  );
+}
 
 export {
   MojiXRoot,
@@ -105,6 +115,12 @@ export function MojiXList({
   showEmptyState = false,
 }: MojiXListProps) {
   const context = useMojiXContext();
+
+  useEffect(() => {
+    if (shouldPreloadVirtualizedGrid(context.virtualization)) {
+      preloadVirtualizedEmojiGrid();
+    }
+  }, [context.virtualization]);
 
   return (
     <EmojiGrid
