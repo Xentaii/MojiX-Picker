@@ -19,6 +19,12 @@ These exports help build and describe emoji spritesheet delivery.
 | `createEmojiLocalUrl` | Function | Builds a local URL for a vendor sheet. |
 | `resolveVendorPackageName` | Function | Maps a vendor to the underlying `emoji-datasource-*` package name. |
 
+## Runtime Helpers
+
+| Export | Kind | Description |
+| --- | --- | --- |
+| `clearEmojiSpriteStyleCache` | Function | Clears the internal cache of computed sprite tile styles. Most apps never need this; it is useful for tests or apps that rotate through many custom sheet URLs. |
+
 ## Related Types
 
 - `EmojiSpriteSheetConfig`

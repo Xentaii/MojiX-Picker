@@ -90,6 +90,47 @@ registerEmojiLocalePack('ru', ruLocale);
 <EmojiPicker locale="ru" />;
 ```
 
+### 6. Warm before opening
+
+```tsx
+import { preloadEmojiPicker } from 'mojix-picker';
+
+button.addEventListener('pointerenter', () => {
+  void preloadEmojiPicker({ locale: 'en' });
+});
+```
+
+`preloadEmojiPicker()` also benefits from the browser prepared-data cache: once
+CDN data has been normalized, future mounts can reuse that IndexedDB entry. Use
+`configureMojiXDataSource({ preparedCache: false })` to disable it.
+
+### 7. Lazy-load categories on demand
+
+```tsx
+import { EmojiPicker, preloadEmojiPicker } from 'mojix-picker';
+
+await preloadEmojiPicker({ shards: ['smileys', 'people'] });
+
+<EmojiPicker loadCategoryShards />;
+```
+
+The picker auto-fetches the remaining categories as the user navigates to
+them. Useful when first-paint payload size matters more than total bytes. See
+[Category Shards](./categories/localization-and-data.md#category-shards-lazy-loading).
+
+### 8. Off-main-thread preparation
+
+```ts
+import { configureMojiXDataSource, preloadEmojiPicker } from 'mojix-picker';
+
+configureMojiXDataSource({ workerPreparation: true });
+
+await preloadEmojiPicker({ locale: 'en' });
+```
+
+Routes search-token generation through an inlined Web Worker and silently
+falls back to the main thread on environments without `Worker`.
+
 ## Categories
 
 - [Picker Props](./categories/picker-props.md)

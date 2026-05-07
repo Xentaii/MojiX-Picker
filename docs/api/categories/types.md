@@ -35,7 +35,9 @@ This file lists the TypeScript types exported from the package root.
 
 | Type | Description |
 | --- | --- |
+| `BuiltInEmojiCategoryId` | Built-in category ids excluding `recent`/`custom`. Used by shard loaders. |
 | `CustomEmoji` | Input record for custom emoji definitions. |
+| `EmojiSearchTokensInput` | Per-record input for `computeEmojiSearchTokensOnWorker`. |
 | `UnicodeEmoji` | Bundled unicode emoji record shape. |
 | `EmojiRecentCategoryConfig` | Config block for the recent category behavior. |
 | `EmojiRecentStore` | Storage interface for reading and writing recent emoji. |
@@ -43,6 +45,10 @@ This file lists the TypeScript types exported from the package root.
 | `EmojiLocaleCategoryLabels` | Category label map for locale definitions. |
 | `EmojiLocaleDefinition` | Fully resolved locale definition shape. |
 | `EmojiLocaleEmojiTranslation` | Per-emoji localized text payload. |
+| `EmojiPickerVirtualization` | Virtualization config block (`enabled`, `overscanRows`, `adaptiveOverscan`). |
+| `MojiXDataSourceConfig` | Runtime data-source config, including CDN base URL, custom fetcher, raw cache controls, prepared IndexedDB cache controls, and `workerPreparation` opt-in. |
+| `PreloadEmojiPickerOptions` | Options for warming data, locales, search indexes, virtualized grid code, sprites, and per-category shard preloading before mount. |
+| `PreloadEmojiPickerResult` | Result returned from `preloadEmojiPicker(...)`. |
 
 ## Asset Resolution
 

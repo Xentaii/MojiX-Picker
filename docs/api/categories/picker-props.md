@@ -72,6 +72,21 @@ These props are accepted by both `EmojiPicker` and `MojiX.Root`.
 | `gridAssetSource` | `EmojiAssetSource` | Grid-only asset strategy. |
 | `previewAssetSource` | `EmojiAssetSource` | Preview-only asset strategy. |
 | `customEmojis` | `CustomEmoji[]` | Custom emoji records, including custom categories. |
+| `loadCategoryShards` | `boolean` | When `true`, the picker fetches missing per-category data shards on demand as the user navigates. Pair with `preloadEmojiPicker({ shards: [...] })` to ship a smaller initial payload. See [Category Shards](./localization-and-data.md#category-shards-lazy-loading). |
+
+## Virtualization
+
+| Prop | Type | Purpose |
+| --- | --- | --- |
+| `virtualization` | `boolean \| EmojiPickerVirtualization` | Enables or disables row virtualization. Pass an object to fine-tune. |
+
+`EmojiPickerVirtualization` fields:
+
+| Field | Type | Default | Purpose |
+| --- | --- | --- | --- |
+| `enabled` | `boolean` | `true` | Master switch. |
+| `overscanRows` | `number` | `8` | Base number of rows to render outside the viewport. Used as a floor — adaptive overscan only grows above this when scrolling. |
+| `adaptiveOverscan` | `boolean` | `true` | When enabled, overscan grows with scroll velocity (up to ~48 rows during fast wheel/trackpad bursts) and shrinks below `overscanRows` while idle. Set to `false` to keep `overscanRows` constant. |
 
 ## Rendering and Events
 

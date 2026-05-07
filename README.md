@@ -63,10 +63,12 @@ import 'mojix-picker/style.css';
 ## 💾 Data
 
 The default picker does not import the full emoji dataset into the main JS
-entry. On first mount, MojiX loads the unicode emoji metadata and the active
-locale from the package CDN mirror:
+entry. On first mount, MojiX first tries the combined English bootstrap payload,
+then falls back to separate unicode metadata and locale files from the package
+CDN mirror:
 
 ```text
+https://cdn.jsdelivr.net/npm/mojix-picker@<version>/data/emoji-bootstrap.en.json
 https://cdn.jsdelivr.net/npm/mojix-picker@<version>/data/emoji-data.json
 https://cdn.jsdelivr.net/npm/mojix-picker@<version>/data/locales/<code>.json
 ```
@@ -95,6 +97,54 @@ preloadEmojiData(emojiData);
 registerEmojiLocalePack('ru', ruLocale);
 registerEmojiLocaleSearchIndex('ru', ruSearch);
 ```
+
+To hide first-open latency in web apps, warm the picker before the popover
+mounts:
+
+```tsx
+import { preloadEmojiPicker } from 'mojix-picker';
+
+void preloadEmojiPicker({ locale: 'ru' });
+```
+
+Browser builds also keep a prepared IndexedDB cache for CDN-loaded emoji data
+when IndexedDB is available. The first successful load stores the normalized
+emoji list and search tokens; later mounts can skip JSON normalization and most
+data preparation work. Fresh downloads are prepared in small idle chunks so the
+opening page stays responsive while the picker warms.
+
+```tsx
+import {
+  clearPreparedEmojiDataCache,
+  configureMojiXDataSource,
+} from 'mojix-picker';
+
+configureMojiXDataSource({
+  preparedCacheName: 'my-app:mojix-prepared',
+});
+
+// For private sessions or tests:
+configureMojiXDataSource({ preparedCache: false });
+void clearPreparedEmojiDataCache();
+```
+
+For first-paint-sensitive applications, MojiX also ships per-category data
+shards (`emoji-shard.<category>.json`). Preload only what the user is likely
+to see immediately and let the picker fetch the rest as they navigate:
+
+```tsx
+import { EmojiPicker, preloadEmojiPicker } from 'mojix-picker';
+
+await preloadEmojiPicker({ shards: ['smileys', 'people'] });
+
+<EmojiPicker loadCategoryShards />;
+```
+
+The heaviest CPU step (search-token generation) can be moved off the main
+thread via `configureMojiXDataSource({ workerPreparation: true })`. The Worker
+is built from an inlined source string via `Blob` URL — no bundler-specific
+worker conventions are required, and environments without `Worker` (SSR,
+restricted CSP) fall back to the main thread automatically.
 
 <a id="picker"></a>
 
@@ -205,6 +255,29 @@ Sprite sheets resolve through `emoji-datasource-*` CDN packages:
 
 ```text
 https://cdn.jsdelivr.net/npm/emoji-datasource-twitter@16.0.0/img/twitter/sheets-256/64.png
+```
+
+For WebView shells such as Tauri, warm and decode the sheet before opening a
+sprite-backed picker to avoid visible row-by-row image decode during virtualized
+scrolling. When a sprite-backed picker is mounted, MojiX also keeps a hidden
+eager image for the active sheet in the root so virtualized rows can reuse the
+same decoded image surface:
+
+```tsx
+import { createEmojiSpriteSheet, preloadEmojiPicker } from 'mojix-picker';
+
+const spriteSheet = createEmojiSpriteSheet({
+  source: 'cdn',
+  vendor: 'twitter',
+  sheetSize: 64,
+  variant: 'indexed-256',
+});
+
+void preloadEmojiPicker({
+  locale: 'en',
+  spriteSheet,
+  warmSpriteSheet: true,
+});
 ```
 
 Asset source helpers:
