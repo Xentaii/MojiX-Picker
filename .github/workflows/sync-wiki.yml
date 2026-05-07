@@ -1,0 +1,60 @@
+name: Sync docs → Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'scripts/sync-wiki.mjs'
+      - '.github/workflows/sync-wiki.yml'
+  workflow_dispatch:
+
+# Only one wiki sync runs at a time; later pushes wait for the previous to
+# finish so the wiki history stays linear.
+concurrency:
+  group: sync-wiki
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Clone wiki
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          REMOTE="https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.wiki.git"
+          if ! git clone "${REMOTE}" wiki; then
+            echo "::error::Wiki repo could not be cloned. Initialize the wiki by creating one page in the GitHub UI, then re-run this workflow."
+            exit 1
+          fi
+
+      - name: Generate wiki content
+        run: node ./scripts/sync-wiki.mjs docs wiki
+
+      - name: Commit and push
+        working-directory: wiki
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Wiki already up to date.'
+            exit 0
+          fi
+          BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          git commit -m "docs: sync from main @ ${GITHUB_SHA::7}"
+          git push origin "HEAD:${BRANCH}"
