@@ -338,26 +338,33 @@ pre {
     0 1px 0 rgba(255, 255, 255, 0.04) inset,
     0 24px 64px rgba(0, 0, 0, 0.42);
   overflow: hidden;
+  transition:
+    border-color 180ms ease,
+    border-radius 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .demo-row--main .playground-card {
-  --demo-panel-height: min(64vh, 520px);
-  --demo-panel-min-height: 460px;
+  --demo-panel-height: min(58vh, 500px);
+  --demo-panel-min-height: 420px;
   min-height: var(--demo-panel-min-height);
   height: var(--demo-panel-height);
 }
 
 .demo-row--main .playground-card--picker {
-  /* Keep the configurable picker visually compact even on huge screens. */
-  max-width: 460px;
+  --demo-picker-height: clamp(360px, 52vh, 440px);
+  align-self: start;
+  max-width: none;
+  min-height: 0;
+  height: auto;
   width: 100%;
-  justify-self: start;
+  justify-self: stretch;
 }
 
 .demo-row--config .playground-card {
-  --config-panel-height: min(86vh, 640px);
-  min-height: 540px;
-  height: var(--config-panel-height);
+  --collapsible-body-height: 560px;
+  min-height: 0;
+  height: auto;
 }
 
 .playground-card__head {
@@ -371,77 +378,108 @@ pre {
   background: rgba(255, 255, 255, 0.02);
 }
 
-.playground-card__toggle {
-  flex: 1;
+.playground-card__head--collapsible {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  min-height: 74px;
+  padding: 16px 18px;
+}
+
+.playground-card__heading {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.playground-card__actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-width: 0;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: max-content;
+}
+
+.playground-card__actions .playground-status,
+.playground-card__actions .dev-reset {
+  min-height: 38px;
+}
+
+.playground-card__actions .playground-status {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playground-card__icon-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
   padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  text-align: left;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #b3a597;
   cursor: pointer;
-  font: inherit;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
 }
 
-.playground-card__toggle:focus-visible {
-  outline: 2px solid rgba(255, 156, 102, 0.4);
-  outline-offset: 4px;
-  border-radius: 8px;
-}
-
-.playground-card__toggle-text {
-  display: grid;
-  gap: 0;
-  min-width: 0;
+.playground-card__icon-toggle:hover,
+.playground-card__icon-toggle:focus-visible {
+  border-color: rgba(255, 156, 102, 0.28);
+  background: rgba(255, 156, 102, 0.1);
+  color: #ffb78a;
+  outline: none;
 }
 
 .playground-card__chevron {
   flex-shrink: 0;
-  width: 12px;
-  height: 12px;
-  border-right: 2px solid #b3a597;
-  border-bottom: 2px solid #b3a597;
-  transform: rotate(-135deg);
-  transition: transform 160ms ease;
+  width: 9px;
+  height: 9px;
+  margin-top: -2px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 .playground-card__chevron[data-open='true'] {
-  transform: rotate(45deg);
+  transform: rotate(-135deg);
+}
+
+.playground-card--collapsible {
+  will-change: border-radius;
 }
 
 .playground-card.is-collapsed {
   height: auto !important;
   min-height: 0 !important;
-  border-radius: 999px;
-}
-
-.playground-card.is-collapsed .playground-card__head {
-  border-bottom: 0;
-  padding: 12px 18px;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.playground-card.is-collapsed .playground-card__toggle-text strong {
-  font-size: 0.92rem;
 }
 
 .playground-card__head strong {
   display: block;
   color: #f5ede1;
   font-size: 1rem;
+  line-height: 1.2;
   letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .playground-card__eyebrow {
   display: inline-flex;
-  margin-bottom: 6px;
   color: #9a8b7c;
   font-size: 0.73rem;
   font-weight: 700;
+  line-height: 1;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -469,11 +507,53 @@ pre {
   min-height: 0;
 }
 
+.playground-card__collapsible {
+  flex: 0 0 auto;
+  width: 100%;
+  height: var(--collapsible-body-height, auto);
+  max-height: var(--collapsible-body-height, none);
+  min-height: 0;
+  opacity: 1;
+  overflow: hidden;
+  transition:
+    max-height 240ms ease,
+    opacity 180ms ease;
+}
+
+.playground-card__collapsible[aria-hidden='true'] {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    max-height 240ms ease,
+    opacity 120ms ease;
+}
+
+.playground-card__collapsible-inner {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  visibility: visible;
+  transition: visibility 0s linear 0s;
+}
+
+.playground-card__collapsible[aria-hidden='true']
+  .playground-card__collapsible-inner {
+  visibility: hidden;
+  transition-delay: 220ms;
+}
+
+.playground-card__collapsible-inner > .playground-card__body {
+  height: 100%;
+}
+
 .playground-card__body--picker {
   display: flex;
   align-items: stretch;
-  justify-content: center;
-  padding: 0;
+  justify-content: flex-start;
+  flex: 0 0 auto;
+  height: var(--demo-picker-height, auto);
+  padding: 0 18px;
 }
 
 .playground-card__body--picker .demo-picker.mx-picker {
@@ -823,10 +903,18 @@ pre {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
 }
 
-.dev-reset:hover {
-  background: rgba(255, 255, 255, 0.08);
+.dev-reset:hover,
+.dev-reset:focus-visible {
+  border-color: rgba(255, 156, 102, 0.28);
+  background: rgba(255, 156, 102, 0.1);
+  color: #ffb78a;
+  outline: none;
 }
 
 .dev-actions {
@@ -995,12 +1083,13 @@ pre {
     min-height: 360px;
   }
 
-  .demo-row--config .playground-card--dev {
-    min-height: 540px;
+  .demo-row--main .playground-card--picker {
+    --demo-picker-height: clamp(360px, 58vh, 440px);
   }
 
-  .demo-row--config .playground-card--code {
-    min-height: 420px;
+  .playground-card__body--picker {
+    justify-content: center;
+    padding: 0;
   }
 
   .api-grid {
@@ -1014,12 +1103,6 @@ pre {
     padding: 24px 0 56px;
   }
 
-  /*
-   * Drop the min-height clamps from the 1240px breakpoint so the dev and
-   * code cards expand to fit their content. Otherwise we trap a tall dev
-   * panel inside a fixed 540px window with an inner scrollbar, which is
-   * confusing on touch.
-   */
   .demo-row--main .playground-card--preview,
   .demo-row--config .playground-card--dev,
   .demo-row--config .playground-card--code {
@@ -1068,16 +1151,30 @@ pre {
     border-radius: 22px;
   }
 
+  .demo-row--config .playground-card {
+    --collapsible-body-height: 540px;
+  }
+
   .playground-card__head {
     padding: 14px 16px 12px;
   }
 
+  .playground-card__head--collapsible {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 72px;
+    padding: 14px 16px;
+  }
+
+  .demo-row--main .playground-card--picker {
+    --demo-picker-height: clamp(340px, 62vh, 420px);
+  }
+
   .playground-card__body--picker {
-    min-height: 440px;
+    min-height: 0;
   }
 
   .playground-card__body--picker .demo-picker.mx-picker {
-    min-height: 440px;
+    min-height: 0;
   }
 
   .playground-card__body--code {
@@ -1182,6 +1279,43 @@ pre {
     padding: 12px 14px;
   }
 
+  .playground-card__head--collapsible {
+    gap: 10px;
+    min-height: 70px;
+    padding: 12px 14px;
+  }
+
+  .playground-card__actions {
+    gap: 8px;
+  }
+
+  .playground-card__icon-toggle {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+  }
+
+  .playground-card__actions .playground-status,
+  .playground-card__actions .dev-reset {
+    min-height: 36px;
+  }
+
+  .playground-card__actions .playground-status {
+    max-width: 128px;
+  }
+
+  .playground-card__actions .dev-reset {
+    padding-inline: 11px;
+  }
+
+  .demo-row--config .playground-card {
+    --collapsible-body-height: 500px;
+  }
+
+  .demo-row--main .playground-card--picker {
+    --demo-picker-height: clamp(320px, 60vh, 380px);
+  }
+
   .playground-status {
     font-size: 0.7rem;
     padding: 5px 8px;
@@ -1228,6 +1362,44 @@ pre {
 
   .code-block--compact {
     font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .playground-card__head--collapsible {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .playground-card__head--collapsible strong {
+    font-size: 0.92rem;
+  }
+
+  .playground-card__actions {
+    gap: 7px;
+  }
+
+  .playground-card__actions .dev-reset {
+    padding-inline: 9px;
+    font-size: 0.7rem;
+  }
+
+  .playground-card__actions .playground-status {
+    max-width: 112px;
+    padding-inline: 8px;
+    font-size: 0.68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playground-card,
+  .playground-card__chevron,
+  .playground-card__collapsible {
+    transition: none;
+  }
+
+  .playground-card__collapsible-inner {
+    transition: none;
   }
 }
 

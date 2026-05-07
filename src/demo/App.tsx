@@ -64,6 +64,7 @@ const RECENT_EMPTY_IDS = ['1f44b', '1f389', '2728', '1f680'];
 const DEFAULT_BRAND_LABEL = 'Brand Kit';
 const DEFAULT_CUSTOM_THEME_NAME = 'My Theme';
 const DEFAULT_PREVIEW_EMOJI = String.fromCodePoint(0x1f642);
+const MOBILE_DEMO_PANEL_QUERY = '(max-width: 760px)';
 
 interface ShowcasePreset {
   id: string;
@@ -536,6 +537,11 @@ export function App() {
   const [themeName, setThemeName] = useState(DEFAULT_CUSTOM_THEME_NAME);
   const [paramsOpen, setParamsOpen] = useState(true);
   const [snippetOpen, setSnippetOpen] = useState(false);
+  const [panelCollapseEnabled, setPanelCollapseEnabled] = useState(() =>
+    typeof window === 'undefined'
+      ? false
+      : window.matchMedia(MOBILE_DEMO_PANEL_QUERY).matches,
+  );
 
   const resolvedBrandLabel = brandLabel.trim() || DEFAULT_BRAND_LABEL;
   const allThemes = useMemo(
@@ -676,6 +682,24 @@ export function App() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(MOBILE_DEMO_PANEL_QUERY);
+    const updatePanelCollapse = () => {
+      setPanelCollapseEnabled(mediaQuery.matches);
+    };
+
+    updatePanelCollapse();
+    mediaQuery.addEventListener('change', updatePanelCollapse);
+
+    return () => {
+      mediaQuery.removeEventListener('change', updatePanelCollapse);
+    };
+  }, []);
+
   function handleEmojiSelect(emoji: EmojiSelection) {
     setLastEmoji(emoji);
   }
@@ -796,6 +820,9 @@ export function App() {
       vendor,
     ],
   );
+
+  const paramsExpanded = !panelCollapseEnabled || paramsOpen;
+  const snippetExpanded = !panelCollapseEnabled || snippetOpen;
 
   return (
     <div className="app-shell">
@@ -964,29 +991,16 @@ export function App() {
 
           <div className="demo-row demo-row--config">
           <aside
-            className={`playground-card playground-card--dev${
-              paramsOpen ? '' : ' is-collapsed'
+            className={`playground-card playground-card--collapsible playground-card--dev${
+              paramsExpanded ? '' : ' is-collapsed'
             }`}
           >
-            <div className="playground-card__head">
-              <button
-                type="button"
-                className="playground-card__toggle"
-                onClick={() => setParamsOpen((open) => !open)}
-                aria-expanded={paramsOpen}
-                aria-controls="dev-params-body"
-              >
-                <span className="playground-card__toggle-text">
-                  <span className="playground-card__eyebrow">Dev Params</span>
-                  <strong>Runtime configuration</strong>
-                </span>
-                <span
-                  className="playground-card__chevron"
-                  data-open={paramsOpen ? 'true' : undefined}
-                  aria-hidden="true"
-                />
-              </button>
-              {paramsOpen ? (
+            <div className="playground-card__head playground-card__head--collapsible">
+              <div className="playground-card__heading">
+                <span className="playground-card__eyebrow">Dev Params</span>
+                <strong>Runtime configuration</strong>
+              </div>
+              <div className="playground-card__actions">
                 <button
                   type="button"
                   className="dev-reset"
@@ -994,16 +1008,41 @@ export function App() {
                 >
                   Reset
                 </button>
-              ) : null}
+                {panelCollapseEnabled ? (
+                  <button
+                    type="button"
+                    className="playground-card__icon-toggle"
+                    onClick={() => setParamsOpen((open) => !open)}
+                    aria-expanded={paramsOpen}
+                    aria-controls="dev-params-body"
+                    aria-label={
+                      paramsOpen
+                        ? 'Collapse runtime configuration'
+                        : 'Expand runtime configuration'
+                    }
+                  >
+                    <span
+                      className="playground-card__chevron"
+                      data-open={paramsOpen ? 'true' : undefined}
+                      aria-hidden="true"
+                    />
+                  </button>
+                ) : null}
+              </div>
             </div>
-            {paramsOpen ? (
             <div
-              id="dev-params-body"
-              className="playground-card__body playground-card__body--scroll"
+              className="playground-card__collapsible"
+              aria-hidden={!paramsExpanded}
+              inert={!paramsExpanded}
             >
-              <form
-                className="dev-panel"
-                onSubmit={(event) => event.preventDefault()}
+              <div className="playground-card__collapsible-inner">
+                <div
+                  id="dev-params-body"
+                  className="playground-card__body playground-card__body--scroll"
+                >
+                  <form
+                    className="dev-panel"
+                    onSubmit={(event) => event.preventDefault()}
               >
                 <section className="dev-group">
                   <div className="dev-group__head">
@@ -1530,68 +1569,81 @@ export function App() {
                     </label>
                   </div>
                 </section>
-
-              </form>
+                  </form>
+                </div>
+              </div>
             </div>
-            ) : null}
           </aside>
 
           <aside
-            className={`playground-card playground-card--code${
-              snippetOpen ? '' : ' is-collapsed'
+            className={`playground-card playground-card--collapsible playground-card--code${
+              snippetExpanded ? '' : ' is-collapsed'
             }`}
           >
-            <div className="playground-card__head">
-              <button
-                type="button"
-                className="playground-card__toggle"
-                onClick={() => setSnippetOpen((open) => !open)}
-                aria-expanded={snippetOpen}
-                aria-controls="snippet-body"
-              >
-                <span className="playground-card__toggle-text">
-                  <span className="playground-card__eyebrow">Live Output</span>
-                  <strong>Generated snippet</strong>
-                </span>
-                <span
-                  className="playground-card__chevron"
-                  data-open={snippetOpen ? 'true' : undefined}
-                  aria-hidden="true"
-                />
-              </button>
-              {snippetOpen ? (
+            <div className="playground-card__head playground-card__head--collapsible">
+              <div className="playground-card__heading">
+                <span className="playground-card__eyebrow">Live Output</span>
+                <strong>Generated snippet</strong>
+              </div>
+              <div className="playground-card__actions">
                 <span className="playground-status playground-status--soft">
                   auto-updating
                 </span>
-              ) : null}
+                {panelCollapseEnabled ? (
+                  <button
+                    type="button"
+                    className="playground-card__icon-toggle"
+                    onClick={() => setSnippetOpen((open) => !open)}
+                    aria-expanded={snippetOpen}
+                    aria-controls="snippet-body"
+                    aria-label={
+                      snippetOpen
+                        ? 'Collapse generated snippet'
+                        : 'Expand generated snippet'
+                    }
+                  >
+                    <span
+                      className="playground-card__chevron"
+                      data-open={snippetOpen ? 'true' : undefined}
+                      aria-hidden="true"
+                    />
+                  </button>
+                ) : null}
+              </div>
             </div>
-            {snippetOpen ? (
             <div
-              id="snippet-body"
-              className="playground-card__body playground-card__body--code"
+              className="playground-card__collapsible"
+              aria-hidden={!snippetExpanded}
+              inert={!snippetExpanded}
             >
-              <section className="code-stack">
-                <div className="code-stack__group">
-                  <header className="code-stack__head">
-                    <h3>JSX</h3>
-                    <span>Reflects current props</span>
-                  </header>
-                  <pre className="code-block code-block--compact">
-                    {playgroundSnippet}
-                  </pre>
+              <div className="playground-card__collapsible-inner">
+                <div
+                  id="snippet-body"
+                  className="playground-card__body playground-card__body--code"
+                >
+                  <section className="code-stack">
+                    <div className="code-stack__group">
+                      <header className="code-stack__head">
+                        <h3>JSX</h3>
+                        <span>Reflects current props</span>
+                      </header>
+                      <pre className="code-block code-block--compact">
+                        {playgroundSnippet}
+                      </pre>
+                    </div>
+                    <div className="code-stack__group">
+                      <header className="code-stack__head">
+                        <h3>Selection payload</h3>
+                        <span>Latest onEmojiSelect</span>
+                      </header>
+                      <pre className="code-block code-block--compact">
+                        {selectionPayload}
+                      </pre>
+                    </div>
+                  </section>
                 </div>
-                <div className="code-stack__group">
-                  <header className="code-stack__head">
-                    <h3>Selection payload</h3>
-                    <span>Latest onEmojiSelect</span>
-                  </header>
-                  <pre className="code-block code-block--compact">
-                    {selectionPayload}
-                  </pre>
-                </div>
-              </section>
+              </div>
             </div>
-            ) : null}
           </aside>
           </div>
         </div>
