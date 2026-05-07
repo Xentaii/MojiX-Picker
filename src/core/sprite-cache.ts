@@ -19,6 +19,8 @@ const pendingSpriteSheetWarmups = new Map<
   string,
   Promise<EmojiSpriteSheetCachedAsset>
 >();
+const decodedSpriteSheetUrls = new Set<string>();
+const pendingSpriteSheetDecodes = new Map<string, Promise<void>>();
 
 interface BrowserAssetCacheRequest {
   key: string;
@@ -36,6 +38,68 @@ function canUseBrowserAssetCache() {
 
 function createBrowserCacheRequest(key: string) {
   return new Request(`https://cache.mojix.invalid/${encodeURIComponent(key)}`);
+}
+
+function canDecodeImage() {
+  return typeof Image !== 'undefined';
+}
+
+export async function preloadSpriteSheetUrl(url: string) {
+  if (!canDecodeImage() || decodedSpriteSheetUrls.has(url)) {
+    return;
+  }
+
+  const pendingDecode = pendingSpriteSheetDecodes.get(url);
+
+  if (pendingDecode) {
+    return pendingDecode;
+  }
+
+  const decodePromise = new Promise<void>((resolve, reject) => {
+    const image = new Image();
+    let settled = false;
+
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      const decode = image.decode?.();
+
+      if (decode) {
+        void decode.catch(() => undefined).finally(() => resolve());
+      } else {
+        resolve();
+      }
+    };
+
+    image.decoding = 'async';
+    image.onload = finish;
+    image.onerror = () => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      reject(new Error(`Failed to preload emoji sprite sheet: ${url}`));
+    };
+    image.src = url;
+
+    if (image.complete) {
+      finish();
+    }
+  })
+    .then(() => {
+      decodedSpriteSheetUrls.add(url);
+    })
+    .finally(() => {
+      pendingSpriteSheetDecodes.delete(url);
+    });
+
+  pendingSpriteSheetDecodes.set(url, decodePromise);
+
+  return decodePromise;
 }
 
 export function createBrowserAssetCacheAdapter(options: {
@@ -69,6 +133,8 @@ async function createCachedAssetFromResponse(
 ): Promise<EmojiSpriteSheetCachedAsset> {
   const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
+
+  await preloadSpriteSheetUrl(objectUrl).catch(() => undefined);
 
   return {
     url: objectUrl,
@@ -204,6 +270,8 @@ export async function warmEmojiSpriteSheet(
   }
 
   if (!adapter || !isRemoteUrl(request.url)) {
+    await preloadSpriteSheetUrl(request.url).catch(() => undefined);
+
     return {
       url: request.url,
       cached: false,

@@ -23,6 +23,8 @@ const VENDOR_PACKAGES: Partial<Record<EmojiVendor, string>> = {
   twitter: 'emoji-datasource-twitter',
   facebook: 'emoji-datasource-facebook',
 };
+const SPRITE_STYLE_CACHE_LIMIT = 4096;
+const spriteStyleCache = new Map<string, CSSProperties>();
 
 export interface ResolvedEmojiSpriteSheetConfig
   extends Omit<
@@ -259,6 +261,44 @@ export function createSpriteSheetCacheKey(config?: EmojiSpriteSheetConfig) {
   );
 }
 
+function createSpriteStyleCacheKey(options: {
+  sheetX: number;
+  sheetY: number;
+  renderSize: number;
+  sheetUrl: string;
+  sheetSize: number;
+  padding: number;
+  gridSize: number;
+}) {
+  return [
+    options.sheetUrl,
+    options.sheetX,
+    options.sheetY,
+    options.renderSize,
+    options.sheetSize,
+    options.padding,
+    options.gridSize,
+  ].join(':');
+}
+
+function cacheSpriteStyle(key: string, style: CSSProperties) {
+  if (spriteStyleCache.size >= SPRITE_STYLE_CACHE_LIMIT) {
+    const firstKey = spriteStyleCache.keys().next().value;
+
+    if (firstKey !== undefined) {
+      spriteStyleCache.delete(firstKey);
+    }
+  }
+
+  spriteStyleCache.set(key, style);
+
+  return style;
+}
+
+export function clearEmojiSpriteStyleCache() {
+  spriteStyleCache.clear();
+}
+
 export function getSpriteStyle(options: {
   sheetX: number;
   sheetY: number;
@@ -274,6 +314,22 @@ export function getSpriteStyle(options: {
   const padding = options.overridePadding ?? resolved.padding;
   const gridSize = options.overrideGridSize ?? resolved.gridSize;
   const cellSize = sheetSize + padding * 2;
+  const sheetUrl = resolveSpriteSheetUrl(resolved, options.overrideUrl);
+  const cacheKey = createSpriteStyleCacheKey({
+    sheetX: options.sheetX,
+    sheetY: options.sheetY,
+    renderSize: options.renderSize,
+    sheetUrl,
+    sheetSize,
+    padding,
+    gridSize,
+  });
+  const cachedStyle = spriteStyleCache.get(cacheKey);
+
+  if (cachedStyle) {
+    return cachedStyle;
+  }
+
   const backgroundScalePercent =
     (gridSize * cellSize * 100) / Math.max(1, sheetSize);
   const backgroundTravel = Math.max(
@@ -284,9 +340,8 @@ export function getSpriteStyle(options: {
     ((options.sheetX * cellSize + padding) * 100) / backgroundTravel;
   const backgroundPositionYPercent =
     ((options.sheetY * cellSize + padding) * 100) / backgroundTravel;
-  const sheetUrl = resolveSpriteSheetUrl(resolved, options.overrideUrl);
 
-  return {
+  return cacheSpriteStyle(cacheKey, {
     width: `${options.renderSize}px`,
     height: `${options.renderSize}px`,
     backgroundImage: `url("${sheetUrl}")`,
@@ -295,7 +350,7 @@ export function getSpriteStyle(options: {
     backgroundPosition: `${backgroundPositionXPercent}% ${backgroundPositionYPercent}%`,
     borderRadius: `${Math.max(4, options.renderSize * 0.22)}px`,
     flexShrink: 0,
-  };
+  });
 }
 
 export function vendorCanRenderEmoji(
