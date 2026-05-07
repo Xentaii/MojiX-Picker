@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 
 const INPUT_PATH = resolve('node_modules/emoji-datasource/emoji.json');
 const OUTPUT_PATH = resolve('src/core/generated/emoji-data.json');
+const EN_BOOTSTRAP_OUTPUT_PATH = resolve(
+  'src/core/generated/emoji-bootstrap.en.json',
+);
 const LOCALE_OUTPUT_PATH = resolve('src/core/generated/emoji-locales.json');
 const META_OUTPUT_PATH = resolve('src/core/generated/emoji-meta.json');
 const CLDR_BASE_PATH = resolve('node_modules/cldr-annotations-full/annotations');
@@ -187,6 +190,12 @@ function toColumnEmojiData(records) {
   };
 }
 
+function toCategoryShardData(records, categoryId) {
+  const filtered = records.filter((emoji) => emoji.categoryId === categoryId);
+
+  return toColumnEmojiData(filtered);
+}
+
 function createLocaleNameDelta(localeNames, baseNames) {
   return Object.fromEntries(
     Object.entries(localeNames).filter(([emojiId, translation]) => {
@@ -331,7 +340,30 @@ const vendorAvailabilityData = Object.fromEntries(
 );
 
 await mkdir(resolve('src/core/generated'), { recursive: true });
-await writeFile(OUTPUT_PATH, JSON.stringify(toColumnEmojiData(emojiData)));
+const columnEmojiData = toColumnEmojiData(emojiData);
+await writeFile(OUTPUT_PATH, JSON.stringify(columnEmojiData));
+
+for (const categoryId of CATEGORY_ID_ORDER) {
+  const shardPath = resolve(
+    `src/core/generated/emoji-shard.${categoryId}.json`,
+  );
+  const shardData = toCategoryShardData(emojiData, categoryId);
+
+  await writeFile(shardPath, JSON.stringify(shardData));
+  console.log(
+    `Generated '${categoryId}' shard (${shardData.rows.length} emoji) to ${shardPath}`,
+  );
+}
+await writeFile(
+  EN_BOOTSTRAP_OUTPUT_PATH,
+  JSON.stringify({
+    version: 1,
+    data: columnEmojiData,
+    locales: {
+      en: deltaLocaleData.en.names,
+    },
+  }),
+);
 await writeFile(
   LOCALE_OUTPUT_PATH,
   JSON.stringify(
@@ -371,5 +403,6 @@ for (const [vendor, missingEmojiIds] of Object.entries(vendorAvailabilityData)) 
 }
 
 console.log(`Generated ${emojiData.length} emoji records to ${OUTPUT_PATH}`);
+console.log(`Generated English bootstrap data to ${EN_BOOTSTRAP_OUTPUT_PATH}`);
 console.log(`Generated combined locale packs to ${LOCALE_OUTPUT_PATH}`);
 console.log(`Generated emoji metadata to ${META_OUTPUT_PATH}`);

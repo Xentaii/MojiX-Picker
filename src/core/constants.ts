@@ -16,6 +16,7 @@ export const DEFAULT_SPRITE_BASE_PATH = '/sprites';
 export const DEFAULT_SPRITE_CACHE_MODE: EmojiSpriteSheetCacheMode = 'browser';
 export const DEFAULT_SPRITE_CACHE_NAME = 'mojix:sprite-sheets';
 export const DEFAULT_DATA_CACHE_NAME = 'mojix:data';
+export const DEFAULT_PREPARED_DATA_CACHE_NAME = 'mojix:prepared-data';
 
 export const DEFAULT_EMOJI_SIZE = 24;
 export const DEFAULT_COLUMNS = 8;
@@ -63,6 +64,26 @@ export const CATEGORY_ORDER: EmojiSystemCategoryId[] = [
   'flags',
   'custom',
 ];
+
+export const BUILT_IN_CATEGORY_IDS = [
+  'smileys',
+  'people',
+  'animals',
+  'food',
+  'activities',
+  'travel',
+  'objects',
+  'symbols',
+  'flags',
+] as const;
+
+const BUILT_IN_CATEGORY_ID_SET = new Set<string>(BUILT_IN_CATEGORY_IDS);
+
+export function isBuiltInCategoryId(
+  categoryId: string,
+): categoryId is (typeof BUILT_IN_CATEGORY_IDS)[number] {
+  return BUILT_IN_CATEGORY_ID_SET.has(categoryId);
+}
 
 export const CATEGORY_GLYPH_META: Record<
   EmojiCategoryIconGlyph,

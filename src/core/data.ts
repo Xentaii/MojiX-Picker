@@ -1,9 +1,25 @@
-import { loadEmojiDataFromCdn } from './data-source';
 import {
+  createMojiXDataAssetCacheInfo,
+  getPreparedEmojiDataCacheName,
+  loadEmojiDataBootstrapFromCdn,
+  loadEmojiDataFromCdn,
+  loadEmojiDataShardFromCdn,
+  shouldUsePreparedEmojiDataCache,
+  shouldUseWorkerPreparation,
+  type EmojiDataBootstrapPayload,
+} from './data-source';
+import {
+  loadPreparedEmojiDataFromCache,
+  savePreparedEmojiDataToCache,
+} from './prepared-cache';
+import { computeEmojiSearchTokensOnWorker } from './data-prepare-worker';
+import {
+  getEmojiLocaleRegistrySnapshot,
   getLocalizedCategoryLabel,
   getLocalizedEmojiKeywords,
   getLocalizedEmojiName,
   loadLocale,
+  registerEmojiLocalePack,
   resolveLocaleDefinition,
 } from './i18n';
 import {
@@ -123,6 +139,19 @@ interface PreparedUnicodeEmojiData {
   byCategory: Record<BuiltInEmojiCategoryId, UnicodeEmoji[]>;
 }
 
+const EMOJI_PREPARE_CHUNK_SIZE = 192;
+const EMOJI_PREPARE_IDLE_TIMEOUT = 50;
+
+interface LocalizedSearchTokensCacheEntry {
+  tokens: string[];
+  registryVersion: number;
+}
+
+const localizedSearchTokensCache = new WeakMap<
+  EmojiRenderable,
+  Map<string, LocalizedSearchTokensCacheEntry>
+>();
+
 export interface EmojiDataStoreSnapshot {
   ready: boolean;
   status: EmojiDataStoreStatus;
@@ -134,12 +163,14 @@ const emojiDataStoreListeners = new Set<() => void>();
 const emojiDataStore: {
   status: EmojiDataStoreStatus;
   prepared: PreparedUnicodeEmojiData | null;
+  loadedCategories: Set<BuiltInEmojiCategoryId>;
   error: unknown;
   promise: Promise<UnicodeEmoji[]> | null;
   version: number;
 } = {
   status: 'idle',
   prepared: null,
+  loadedCategories: new Set(),
   error: null,
   promise: null,
   version: 0,
@@ -213,6 +244,40 @@ function normalizeQuery(value: string) {
     .replace(/[_-]+/gu, ' ')
     .replace(/[^\p{L}\p{N}:+()<> ]+/gu, ' ')
     .replace(/\s+/gu, ' ');
+}
+
+function waitForEmojiPreparationSlot() {
+  return new Promise<void>((resolve) => {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(() => resolve(), {
+        timeout: EMOJI_PREPARE_IDLE_TIMEOUT,
+      });
+      return;
+    }
+
+    setTimeout(resolve, 0);
+  });
+}
+
+async function mapEmojiDataInChunks<T, R>(
+  items: readonly T[],
+  mapper: (item: T, index: number) => R,
+  chunkSize = EMOJI_PREPARE_CHUNK_SIZE,
+) {
+  const mapped = new Array<R>(items.length);
+
+  for (let index = 0; index < items.length; index += 1) {
+    mapped[index] = mapper(items[index]!, index);
+
+    if (
+      (index + 1) % chunkSize === 0 &&
+      index + 1 < items.length
+    ) {
+      await waitForEmojiPreparationSlot();
+    }
+  }
+
+  return mapped;
 }
 
 function createSearchTokens(options: {
@@ -469,10 +534,54 @@ function expandColumnEmojiData(
   }));
 }
 
+async function expandColumnEmojiDataAsync(
+  raw: UnicodeEmojiColumnData,
+): Promise<UnicodeEmojiDataRecord[]> {
+  const indexes = createColumnFieldIndexes(raw.fields);
+  const categories = raw.categories ?? DEFAULT_COLUMN_CATEGORIES;
+  const subcategories = raw.subcategories ?? [];
+  const skinTones = raw.skinTones ?? DEFAULT_COLUMN_SKIN_TONES;
+
+  return mapEmojiDataInChunks(raw.rows, (row) => ({
+    id: requireColumnString(row, indexes, 'id'),
+    native: requireColumnString(row, indexes, 'native'),
+    name: getOptionalColumnString(row, indexes, 'name'),
+    aliases: toStringArray(getColumnValue(row, indexes, 'aliases')),
+    emoticons: toStringArray(getColumnValue(row, indexes, 'emoticons')),
+    categoryId: resolveColumnCategory(
+      getColumnValue(row, indexes, 'categoryId'),
+      categories,
+    ),
+    subcategory: resolveColumnSubcategory(
+      getColumnValue(row, indexes, 'subcategory'),
+      subcategories,
+    ),
+    sheetX: requireColumnNumber(row, indexes, 'sheetX'),
+    sheetY: requireColumnNumber(row, indexes, 'sheetY'),
+    availability: getColumnValue(row, indexes, 'availability') as
+      | EmojiDataAvailabilityInput
+      | undefined,
+    skins: expandColumnSkins(
+      getColumnValue(row, indexes, 'skins'),
+      skinTones,
+    ),
+  }));
+}
+
 function normalizeEmojiDataInput(raw: EmojiDataInput): UnicodeEmojiDataRecord[] {
   const payload = unwrapEmojiDataInput(raw);
 
   return isColumnEmojiData(payload) ? expandColumnEmojiData(payload) : payload;
+}
+
+async function normalizeEmojiDataInputAsync(
+  raw: EmojiDataInput,
+): Promise<UnicodeEmojiDataRecord[]> {
+  const payload = unwrapEmojiDataInput(raw);
+
+  return isColumnEmojiData(payload)
+    ? expandColumnEmojiDataAsync(payload)
+    : payload;
 }
 
 function idToUnified(id: string) {
@@ -552,49 +661,122 @@ function normalizeUnicodeEmojiRecord(
   };
 }
 
-function prepareUnicodeEmojiData(
-  raw: UnicodeEmojiDataRecord[],
+function createPreparedUnicodeEmojiDataFromList(
+  list: UnicodeEmoji[],
 ): PreparedUnicodeEmojiData {
-  const list = raw.map((record) => {
-    const emoji = normalizeUnicodeEmojiRecord(record);
-    const categoryLabel = CATEGORY_META[emoji.categoryId].label;
+  const byId = new Map<string, UnicodeEmoji>();
+  const byNative = new Map<string, UnicodeEmoji>();
+  const byCategory: Record<BuiltInEmojiCategoryId, UnicodeEmoji[]> = {
+    smileys: [],
+    people: [],
+    animals: [],
+    food: [],
+    activities: [],
+    travel: [],
+    objects: [],
+    symbols: [],
+    flags: [],
+  };
 
-    return {
-      ...emoji,
-      kind: 'unicode' as const,
-      categoryLabel,
-      searchTokens: createSearchTokens({
-        name: emoji.name,
-        categoryLabel,
-        subcategory: emoji.subcategory,
-        aliases: emoji.aliases,
-        emoticons: emoji.emoticons,
-      }),
-    };
-  });
+  for (const emoji of list) {
+    byId.set(emoji.id, emoji);
+    byNative.set(emoji.native, emoji);
+    byCategory[emoji.categoryId].push(emoji);
+  }
 
   return {
     list,
-    byId: new Map(list.map((emoji) => [emoji.id, emoji])),
-    byNative: new Map(list.map((emoji) => [emoji.native, emoji])),
-    byCategory: list.reduce<Record<BuiltInEmojiCategoryId, UnicodeEmoji[]>>(
-      (groups, emoji) => {
-        groups[emoji.categoryId].push(emoji);
-        return groups;
-      },
-      {
-        smileys: [],
-        people: [],
-        animals: [],
-        food: [],
-        activities: [],
-        travel: [],
-        objects: [],
-        symbols: [],
-        flags: [],
-      },
-    ),
+    byId,
+    byNative,
+    byCategory,
   };
+}
+
+interface PartiallyPreparedUnicodeEmoji {
+  base: PreparedUnicodeEmojiRecord;
+  categoryLabel: string;
+}
+
+function partiallyPrepareUnicodeEmojiRecord(
+  record: UnicodeEmojiDataRecord,
+): PartiallyPreparedUnicodeEmoji {
+  const base = normalizeUnicodeEmojiRecord(record);
+  const categoryLabel = CATEGORY_META[base.categoryId].label;
+
+  return { base, categoryLabel };
+}
+
+function finalizeUnicodeEmojiRecord(
+  partial: PartiallyPreparedUnicodeEmoji,
+  searchTokens: string[],
+): UnicodeEmoji {
+  return {
+    ...partial.base,
+    kind: 'unicode' as const,
+    categoryLabel: partial.categoryLabel,
+    searchTokens,
+  };
+}
+
+function prepareUnicodeEmojiRecord(record: UnicodeEmojiDataRecord) {
+  const partial = partiallyPrepareUnicodeEmojiRecord(record);
+
+  return finalizeUnicodeEmojiRecord(
+    partial,
+    createSearchTokens({
+      name: partial.base.name,
+      categoryLabel: partial.categoryLabel,
+      subcategory: partial.base.subcategory,
+      aliases: partial.base.aliases,
+      emoticons: partial.base.emoticons,
+    }),
+  );
+}
+
+function prepareUnicodeEmojiData(
+  raw: UnicodeEmojiDataRecord[],
+): PreparedUnicodeEmojiData {
+  return createPreparedUnicodeEmojiDataFromList(
+    raw.map((record) => prepareUnicodeEmojiRecord(record)),
+  );
+}
+
+async function prepareUnicodeEmojiListAsync(
+  raw: UnicodeEmojiDataRecord[],
+): Promise<UnicodeEmoji[]> {
+  if (shouldUseWorkerPreparation()) {
+    const partials = await mapEmojiDataInChunks(raw, (record) =>
+      partiallyPrepareUnicodeEmojiRecord(record),
+    );
+
+    const tokens = await computeEmojiSearchTokensOnWorker(
+      partials.map((partial) => ({
+        name: partial.base.name,
+        categoryLabel: partial.categoryLabel,
+        subcategory: partial.base.subcategory,
+        aliases: partial.base.aliases,
+        emoticons: partial.base.emoticons,
+      })),
+    );
+
+    return partials.map((partial, index) =>
+      finalizeUnicodeEmojiRecord(partial, tokens[index] ?? []),
+    );
+  }
+
+  return mapEmojiDataInChunks(raw, (record) =>
+    prepareUnicodeEmojiRecord(record),
+  );
+}
+
+async function prepareUnicodeEmojiDataAsync(
+  raw: UnicodeEmojiDataRecord[],
+): Promise<PreparedUnicodeEmojiData> {
+  const list = await prepareUnicodeEmojiListAsync(raw);
+
+  await waitForEmojiPreparationSlot();
+
+  return createPreparedUnicodeEmojiDataFromList(list);
 }
 
 function getLoadedPreparedUnicodeEmojiData() {
@@ -678,16 +860,173 @@ export function hasEmojiData() {
   return emojiDataStore.prepared !== null;
 }
 
-export function preloadEmojiData(raw: EmojiDataInput) {
-  const prepared = prepareUnicodeEmojiData(normalizeEmojiDataInput(raw));
-
+function setPreparedEmojiData(prepared: PreparedUnicodeEmojiData) {
   emojiDataStore.prepared = prepared;
+  emojiDataStore.status = 'ready';
+  emojiDataStore.error = null;
+  emojiDataStore.promise = Promise.resolve(prepared.list);
+  // Full preload covers every built-in category so consumers do not retry
+  // shard loads after a bootstrap.
+  for (const categoryId of DEFAULT_COLUMN_CATEGORIES) {
+    emojiDataStore.loadedCategories.add(categoryId);
+  }
+  emitEmojiDataStoreChange();
+
+  return prepared.list;
+}
+
+export function preloadEmojiData(raw: EmojiDataInput) {
+  return setPreparedEmojiData(
+    prepareUnicodeEmojiData(normalizeEmojiDataInput(raw)),
+  );
+}
+
+async function prepareEmojiDataInputAsync(
+  raw: EmojiDataInput,
+  preparedCacheKey?: string,
+) {
+  const prepared = await prepareUnicodeEmojiDataAsync(
+    await normalizeEmojiDataInputAsync(raw),
+  );
+  const list = setPreparedEmojiData(prepared);
+
+  if (preparedCacheKey && shouldUsePreparedEmojiDataCache()) {
+    void savePreparedEmojiDataToCache({
+      key: preparedCacheKey,
+      list,
+      cacheName: getPreparedEmojiDataCacheName(),
+    }).catch(() => undefined);
+  }
+
+  return list;
+}
+
+async function prepareEmojiDataBootstrapAsync(
+  raw: EmojiDataBootstrapPayload,
+  preparedCacheKey?: string,
+) {
+  for (const [locale, pack] of Object.entries(raw.locales ?? {})) {
+    registerEmojiLocalePack(locale, pack);
+  }
+
+  return prepareEmojiDataInputAsync(raw.data, preparedCacheKey);
+}
+
+function createPreparedEmojiDataCacheKeys() {
+  return {
+    bootstrap: createMojiXDataAssetCacheInfo({
+      kind: 'emoji-data',
+      key: 'emoji-bootstrap:en',
+      path: 'emoji-bootstrap.en.json',
+    }).key,
+    legacy: createMojiXDataAssetCacheInfo({
+      kind: 'emoji-data',
+      key: 'emoji-data',
+      path: 'emoji-data.json',
+    }).key,
+  };
+}
+
+async function loadPreparedEmojiDataCache(
+  cacheKey: string,
+) {
+  if (!shouldUsePreparedEmojiDataCache()) {
+    return null;
+  }
+
+  const list = await loadPreparedEmojiDataFromCache({
+    key: cacheKey,
+    cacheName: getPreparedEmojiDataCacheName(),
+  }).catch(() => null);
+
+  return list ? createPreparedUnicodeEmojiDataFromList(list) : null;
+}
+
+async function loadAnyPreparedEmojiDataCache(
+  keys: readonly string[],
+) {
+  for (const key of keys) {
+    const prepared = await loadPreparedEmojiDataCache(key);
+
+    if (prepared) {
+      return prepared;
+    }
+  }
+
+  return null;
+}
+
+function ensurePartialPreparedStore(): PreparedUnicodeEmojiData {
+  if (!emojiDataStore.prepared) {
+    emojiDataStore.prepared = createPreparedUnicodeEmojiDataFromList([]);
+  }
+  return emojiDataStore.prepared;
+}
+
+function mergeEmojiShardIntoStore(
+  categoryId: BuiltInEmojiCategoryId,
+  shardList: UnicodeEmoji[],
+) {
+  const prepared = ensurePartialPreparedStore();
+  let inserted = 0;
+
+  for (const emoji of shardList) {
+    if (prepared.byId.has(emoji.id)) {
+      continue;
+    }
+
+    prepared.byId.set(emoji.id, emoji);
+    prepared.byNative.set(emoji.native, emoji);
+    prepared.byCategory[emoji.categoryId].push(emoji);
+    prepared.list.push(emoji);
+    inserted += 1;
+  }
+
+  emojiDataStore.loadedCategories.add(categoryId);
   emojiDataStore.status = 'ready';
   emojiDataStore.error = null;
   emojiDataStore.promise = Promise.resolve(prepared.list);
   emitEmojiDataStoreChange();
 
-  return prepared.list;
+  return { list: prepared.list, inserted };
+}
+
+const pendingShardLoads = new Map<BuiltInEmojiCategoryId, Promise<UnicodeEmoji[]>>();
+
+export function loadEmojiCategoryShard(
+  categoryId: BuiltInEmojiCategoryId,
+): Promise<UnicodeEmoji[]> {
+  if (emojiDataStore.loadedCategories.has(categoryId) && emojiDataStore.prepared) {
+    return Promise.resolve(emojiDataStore.prepared.list);
+  }
+
+  const pending = pendingShardLoads.get(categoryId);
+
+  if (pending) {
+    return pending;
+  }
+
+  const promise = (async () => {
+    const raw = await loadEmojiDataShardFromCdn(categoryId);
+    const records = await normalizeEmojiDataInputAsync(raw);
+    const list = await prepareUnicodeEmojiListAsync(records);
+
+    return mergeEmojiShardIntoStore(categoryId, list).list;
+  })().finally(() => {
+    pendingShardLoads.delete(categoryId);
+  });
+
+  pendingShardLoads.set(categoryId, promise);
+
+  return promise;
+}
+
+export function loadEmojiCategoryShards(
+  categoryIds: readonly BuiltInEmojiCategoryId[],
+): Promise<UnicodeEmoji[]> {
+  return Promise.all(categoryIds.map(loadEmojiCategoryShard)).then(
+    () => ensurePartialPreparedStore().list,
+  );
 }
 
 export function loadEmojiData(): Promise<UnicodeEmoji[]> {
@@ -702,11 +1041,29 @@ export function loadEmojiData(): Promise<UnicodeEmoji[]> {
   emojiDataStore.status = 'loading';
   emojiDataStore.error = null;
 
-  const loadPromise = Promise.all([
-    loadEmojiDataFromCdn(),
-    loadLocale('en').catch(() => null),
+  const preparedCacheKeys = createPreparedEmojiDataCacheKeys();
+  const loadPromise = loadAnyPreparedEmojiDataCache([
+    preparedCacheKeys.bootstrap,
+    preparedCacheKeys.legacy,
   ])
-    .then(([raw]) => preloadEmojiData(raw))
+    .then((cachedPrepared) => {
+      if (cachedPrepared) {
+        return setPreparedEmojiData(cachedPrepared);
+      }
+
+      return loadEmojiDataBootstrapFromCdn()
+        .then((raw) =>
+          prepareEmojiDataBootstrapAsync(raw, preparedCacheKeys.bootstrap),
+        )
+        .catch(() =>
+          Promise.all([
+            loadEmojiDataFromCdn(),
+            loadLocale('en').catch(() => null),
+          ]).then(([raw]) =>
+            prepareEmojiDataInputAsync(raw, preparedCacheKeys.legacy),
+          ),
+        );
+    })
     .catch((error) => {
       emojiDataStore.status = 'error';
       emojiDataStore.error = error;
@@ -723,6 +1080,14 @@ export function loadEmojiData(): Promise<UnicodeEmoji[]> {
 
 export function peekUnicodeEmojiData() {
   return emojiDataStore.prepared?.list ?? null;
+}
+
+export function isEmojiCategoryLoaded(categoryId: BuiltInEmojiCategoryId) {
+  return emojiDataStore.loadedCategories.has(categoryId);
+}
+
+export function getLoadedEmojiCategories(): readonly BuiltInEmojiCategoryId[] {
+  return Array.from(emojiDataStore.loadedCategories);
 }
 
 export function peekUnicodeEmojiByCategory(
@@ -948,7 +1313,15 @@ export function getLocalizedSearchTokens(
     return [];
   }
 
-  return createSearchTokens({
+  const registryVersion = getEmojiLocaleRegistrySnapshot();
+  let perEmojiCache = localizedSearchTokensCache.get(emoji);
+  const cachedEntry = perEmojiCache?.get(localeDefinition.code);
+
+  if (cachedEntry && cachedEntry.registryVersion === registryVersion) {
+    return cachedEntry.tokens;
+  }
+
+  const tokens = createSearchTokens({
     name: getLocalizedEmojiName(emoji, localeDefinition),
     categoryLabel: getLocalizedCategoryLabel(emoji.categoryId, localeDefinition),
     subcategory: emoji.subcategory,
@@ -958,4 +1331,16 @@ export function getLocalizedSearchTokens(
       ...getLocalizedEmojiKeywords(emoji, localeDefinition),
     ],
   });
+
+  if (!perEmojiCache) {
+    perEmojiCache = new Map();
+    localizedSearchTokensCache.set(emoji, perEmojiCache);
+  }
+
+  perEmojiCache.set(localeDefinition.code, {
+    tokens,
+    registryVersion,
+  });
+
+  return tokens;
 }

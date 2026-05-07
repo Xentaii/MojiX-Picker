@@ -45,11 +45,13 @@ export {
   createEmojiCdnUrl,
   createEmojiLocalSpriteSheet,
   createEmojiLocalUrl,
+  clearEmojiSpriteStyleCache,
   defaultSpriteSheet,
   resolveVendorPackageName,
 } from './core/sprites';
 export {
   createBrowserSpriteSheetCacheAdapter,
+  preloadSpriteSheetUrl,
   warmEmojiSpriteSheet,
 } from './core/sprite-cache';
 export {
@@ -73,6 +75,11 @@ export type {
 } from './core/search';
 export { resolveEmojiSelection } from './core/engine';
 export type { ResolveEmojiSelectionOptions } from './core/engine';
+export { preloadEmojiPicker } from './preload';
+export type {
+  PreloadEmojiPickerOptions,
+  PreloadEmojiPickerResult,
+} from './preload';
 export {
   createRecentEmojiStore,
   createSkinToneStore,
@@ -97,10 +104,33 @@ export {
   resolveLocaleDefinition,
 } from './core/i18n';
 export {
+  getLoadedEmojiCategories,
   getUnicodeEmojiData,
+  isEmojiCategoryLoaded,
+  loadEmojiCategoryShard,
+  loadEmojiCategoryShards,
   loadEmojiData,
   preloadEmojiData,
 } from './core/data';
+export {
+  clearPreparedEmojiDataCache,
+} from './core/prepared-cache';
+export {
+  computeEmojiSearchTokensOnWorker,
+  disposeEmojiPreparationWorker,
+  isEmojiPreparationWorkerAvailable,
+} from './core/data-prepare-worker';
+export type { EmojiSearchTokensInput } from './core/data-prepare-worker';
+export {
+  configureMojiXDataSource,
+  resetMojiXDataSource,
+} from './core/data-source';
+export type {
+  EmojiDataBootstrapPayload,
+  MojiXDataFetchRequest,
+  MojiXDataFetcher,
+  MojiXDataSourceConfig,
+} from './core/data-source';
 export type {
   EmojiDataInput,
   EmojiDataPayload,
@@ -109,6 +139,7 @@ export type {
   UnicodeEmojiDataRecord,
 } from './core/data';
 export type {
+  BuiltInEmojiCategoryId,
   CustomEmoji,
   EmojiCategoryConfig,
   EmojiAssetRenderContext,
@@ -136,6 +167,7 @@ export type {
   EmojiPickerClassNames,
   EmojiPickerSlot,
   EmojiPickerStyles,
+  EmojiPickerVirtualization,
   EmojiRecentStore,
   EmojiResolvedAsset,
   EmojiRenderState,

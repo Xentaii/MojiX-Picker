@@ -98,6 +98,20 @@ function copyBundleDataPlugin() {
         resolve(generatedDir, 'emoji-data.json'),
         resolve(distDataDir, 'emoji-data.json'),
       );
+      cpSync(
+        resolve(generatedDir, 'emoji-bootstrap.en.json'),
+        resolve(distDataDir, 'emoji-bootstrap.en.json'),
+      );
+      for (const fileName of readdirSync(generatedDir)) {
+        if (!/^emoji-shard\.[^.]+\.json$/u.test(fileName)) {
+          continue;
+        }
+
+        cpSync(
+          resolve(generatedDir, fileName),
+          resolve(distDataDir, fileName),
+        );
+      }
       for (const fileName of readdirSync(generatedDir)) {
         if (!/^availability\.[^.]+\.json$/u.test(fileName)) {
           continue;
