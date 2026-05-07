@@ -534,6 +534,8 @@ export function App() {
     cloneDemoThemePalette(BUILTIN_DEMO_THEMES[0]!.palette),
   );
   const [themeName, setThemeName] = useState(DEFAULT_CUSTOM_THEME_NAME);
+  const [paramsOpen, setParamsOpen] = useState(true);
+  const [snippetOpen, setSnippetOpen] = useState(false);
 
   const resolvedBrandLabel = brandLabel.trim() || DEFAULT_BRAND_LABEL;
   const allThemes = useMemo(
@@ -796,7 +798,24 @@ export function App() {
   );
 
   return (
-    <div className="page">
+    <div className="app-shell">
+      <header className="topbar">
+        <div className="topbar__inner">
+          <span className="topbar__brand">MojiX</span>
+          <a
+            className="topbar__link"
+            href="https://github.com/Xentaii/MojiX-Picker"
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="MojiX on GitHub"
+          >
+            <GitHubIcon />
+            <span className="topbar__link-label">GitHub</span>
+          </a>
+        </div>
+      </header>
+
+      <div className="page">
       <header className="hero">
         <div className="hero__inner">
           <span className="badge">MojiX</span>
@@ -944,21 +963,44 @@ export function App() {
           </div>
 
           <div className="demo-row demo-row--config">
-          <aside className="playground-card playground-card--dev">
+          <aside
+            className={`playground-card playground-card--dev${
+              paramsOpen ? '' : ' is-collapsed'
+            }`}
+          >
             <div className="playground-card__head">
-              <div>
-                <span className="playground-card__eyebrow">Dev Params</span>
-                <strong>Runtime configuration</strong>
-              </div>
               <button
                 type="button"
-                className="dev-reset"
-                onClick={resetDemoControls}
+                className="playground-card__toggle"
+                onClick={() => setParamsOpen((open) => !open)}
+                aria-expanded={paramsOpen}
+                aria-controls="dev-params-body"
               >
-                Reset
+                <span className="playground-card__toggle-text">
+                  <span className="playground-card__eyebrow">Dev Params</span>
+                  <strong>Runtime configuration</strong>
+                </span>
+                <span
+                  className="playground-card__chevron"
+                  data-open={paramsOpen ? 'true' : undefined}
+                  aria-hidden="true"
+                />
               </button>
+              {paramsOpen ? (
+                <button
+                  type="button"
+                  className="dev-reset"
+                  onClick={resetDemoControls}
+                >
+                  Reset
+                </button>
+              ) : null}
             </div>
-            <div className="playground-card__body playground-card__body--scroll">
+            {paramsOpen ? (
+            <div
+              id="dev-params-body"
+              className="playground-card__body playground-card__body--scroll"
+            >
               <form
                 className="dev-panel"
                 onSubmit={(event) => event.preventDefault()}
@@ -1491,19 +1533,43 @@ export function App() {
 
               </form>
             </div>
+            ) : null}
           </aside>
 
-          <aside className="playground-card playground-card--code">
+          <aside
+            className={`playground-card playground-card--code${
+              snippetOpen ? '' : ' is-collapsed'
+            }`}
+          >
             <div className="playground-card__head">
-              <div>
-                <span className="playground-card__eyebrow">Live Output</span>
-                <strong>Generated snippet</strong>
-              </div>
-              <span className="playground-status playground-status--soft">
-                auto-updating
-              </span>
+              <button
+                type="button"
+                className="playground-card__toggle"
+                onClick={() => setSnippetOpen((open) => !open)}
+                aria-expanded={snippetOpen}
+                aria-controls="snippet-body"
+              >
+                <span className="playground-card__toggle-text">
+                  <span className="playground-card__eyebrow">Live Output</span>
+                  <strong>Generated snippet</strong>
+                </span>
+                <span
+                  className="playground-card__chevron"
+                  data-open={snippetOpen ? 'true' : undefined}
+                  aria-hidden="true"
+                />
+              </button>
+              {snippetOpen ? (
+                <span className="playground-status playground-status--soft">
+                  auto-updating
+                </span>
+              ) : null}
             </div>
-            <div className="playground-card__body playground-card__body--code">
+            {snippetOpen ? (
+            <div
+              id="snippet-body"
+              className="playground-card__body playground-card__body--code"
+            >
               <section className="code-stack">
                 <div className="code-stack__group">
                   <header className="code-stack__head">
@@ -1525,6 +1591,7 @@ export function App() {
                 </div>
               </section>
             </div>
+            ) : null}
           </aside>
           </div>
         </div>
@@ -1567,6 +1634,40 @@ export function App() {
           </div>
         </div>
       </section>
+      </div>
+
+      <footer className="page-footer">
+        <div className="page-footer__inner">
+          <span className="page-footer__byline">
+            MojiX - React emoji picker
+          </span>
+          <a
+            className="page-footer__link"
+            href="https://github.com/Xentaii/MojiX-Picker"
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="MojiX on GitHub"
+          >
+            <GitHubIcon />
+            <span>GitHub</span>
+          </a>
+        </div>
+      </footer>
     </div>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+    >
+      <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.55 0-.27-.01-1.16-.02-2.1-3.2.7-3.87-1.36-3.87-1.36-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.69 1.25 3.34.95.1-.74.4-1.25.72-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.18-3.08-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.16 1.18a10.97 10.97 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.62 1.58.23 2.75.11 3.04.74.8 1.18 1.82 1.18 3.08 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.06.78 2.13 0 1.54-.01 2.78-.01 3.16 0 .31.21.67.8.55C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5Z" />
+    </svg>
   );
 }
