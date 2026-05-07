@@ -50,6 +50,15 @@ describe('public API surface', () => {
     expect(api.createRecentEmojiStore).toBeTypeOf('function');
     expect(api.createSkinToneStore).toBeTypeOf('function');
     expect(api.useEmojiAssets).toBeTypeOf('function');
+    expect(api.preloadEmojiPicker).toBeTypeOf('function');
+    expect(api.configureMojiXDataSource).toBeTypeOf('function');
+    expect(api.clearPreparedEmojiDataCache).toBeTypeOf('function');
+    expect(api.clearEmojiSpriteStyleCache).toBeTypeOf('function');
+    expect(api.loadEmojiCategoryShard).toBeTypeOf('function');
+    expect(api.loadEmojiCategoryShards).toBeTypeOf('function');
+    expect(api.computeEmojiSearchTokensOnWorker).toBeTypeOf('function');
+    expect(api.disposeEmojiPreparationWorker).toBeTypeOf('function');
+    expect(api.isEmojiPreparationWorkerAvailable).toBeTypeOf('function');
   });
 
   it('createEmojiIndex search returns ranked results', () => {

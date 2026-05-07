@@ -9,21 +9,25 @@ const englishLocaleJson = readFileSync(
   new URL('../../src/core/generated/emoji-locale.en.json', import.meta.url),
   'utf8',
 );
+const englishBootstrapJson = readFileSync(
+  new URL('../../src/core/generated/emoji-bootstrap.en.json', import.meta.url),
+  'utf8',
+);
 
 test.describe('MojiX CDN data loading', () => {
   test('loads emoji data from jsdelivr on first mount', async ({ page }) => {
-    let emojiDataRequests = 0;
+    let bootstrapRequests = 0;
 
     await page.route(
-      'https://cdn.jsdelivr.net/**/data/emoji-data.json',
+      'https://cdn.jsdelivr.net/**/data/emoji-bootstrap.en.json',
       async (route) => {
-        emojiDataRequests += 1;
+        bootstrapRequests += 1;
         await new Promise((resolve) => setTimeout(resolve, 150));
 
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
-          body: emojiDataJson,
+          body: englishBootstrapJson,
         });
       },
     );
@@ -45,7 +49,7 @@ test.describe('MojiX CDN data loading', () => {
     await expect(page.locator('[data-mx-slot="loading"]')).toBeVisible();
     await expect(page.locator('[data-mx-slot="emoji"]').nth(1)).toBeVisible();
     await expect(page.locator('[data-mx-slot="loading"]')).toHaveCount(0);
-    expect(emojiDataRequests).toBe(1);
+    expect(bootstrapRequests).toBe(1);
   });
 
   test('keeps loading visible and reports errors when the CDN request fails', async ({
@@ -53,6 +57,16 @@ test.describe('MojiX CDN data loading', () => {
   }) => {
     let emojiDataRequests = 0;
 
+    await page.route(
+      'https://cdn.jsdelivr.net/**/data/emoji-bootstrap.en.json',
+      async (route) => {
+        await route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: '{"error":"unavailable"}',
+        });
+      },
+    );
     await page.route(
       'https://cdn.jsdelivr.net/**/data/emoji-data.json',
       async (route) => {

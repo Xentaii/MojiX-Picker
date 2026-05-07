@@ -89,6 +89,10 @@ function ensureTarballContainsDataAssets(packEntries) {
     throw new Error('Tarball is missing dist/data/emoji-data.json');
   }
 
+  if (!files.has('dist/data/emoji-bootstrap.en.json')) {
+    throw new Error('Tarball is missing dist/data/emoji-bootstrap.en.json');
+  }
+
   for (const vendor of ['apple', 'google', 'twitter', 'facebook']) {
     const availabilityPath = `dist/data/availability.${vendor}.json`;
 
@@ -111,6 +115,7 @@ function ensureTarballHasNoCjs(packEntries) {
 }
 
 const PRECOMPRESSION_REQUIRED = [
+  'dist/data/emoji-bootstrap.en.json',
   'dist/data/emoji-data.json',
   'dist/lib/style.css',
 ];
