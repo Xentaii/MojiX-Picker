@@ -38,7 +38,10 @@ tarball with the same package version.
 npm run dev:tauri
 ```
 
-Runs the fixture as a desktop Tauri app.
+Builds the fixture frontend and runs it as a desktop Tauri app through Tauri's
+built-in static dev server. This path does not start the Vite dev server or
+inject Vite's HMR websocket client, which keeps WebView console and scroll
+profiling clean.
 
 ```bash
 npm run test:tauri:e2e

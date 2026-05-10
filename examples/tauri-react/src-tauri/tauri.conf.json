@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "identifier": "dev.mojix.tauri.fixture",
   "build": {
-    "beforeDevCommand": "npm run dev",
-    "devUrl": "http://127.0.0.1:1420",
+    "beforeDevCommand": "npm run build",
+    "devUrl": null,
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },

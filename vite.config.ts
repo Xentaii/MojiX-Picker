@@ -14,6 +14,9 @@ export default defineConfig({
     __MOJIX_VERSION__: JSON.stringify(packageJson.version),
   },
   plugins: [react()],
+  server: {
+    forwardConsole: false,
+  },
   build: {
     outDir: 'dist/demo',
     chunkSizeWarningLimit: 1500,

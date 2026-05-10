@@ -5,6 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const fixtureRoot = resolve(repoRoot, 'examples/tauri-react');
+const localTarballPath = resolve(repoRoot, '.tmp/mojix-picker-local.tgz');
+const localTarballSpec = `file:${relative(fixtureRoot, localTarballPath).replaceAll(
+  '\\',
+  '/',
+)}`;
 const installedPackagePath = resolve(
   fixtureRoot,
   'node_modules/mojix-picker',
@@ -33,12 +38,11 @@ const command = npmCli
     : 'npm';
 const args = [
   ...(npmCli ? [npmCli] : []),
-  '--prefix',
-  fixtureRoot,
   'install',
+  localTarballSpec,
 ];
 const result = spawnSync(command, args, {
-  cwd: repoRoot,
+  cwd: fixtureRoot,
   stdio: 'inherit',
 });
 
