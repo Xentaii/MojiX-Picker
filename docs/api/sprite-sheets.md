@@ -1,4 +1,4 @@
-# Sprite Helpers
+# Sprite Sheets
 
 These exports help build and describe emoji spritesheet delivery.
 

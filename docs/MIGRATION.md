@@ -8,7 +8,7 @@ Use this guide together with:
 
 - [README](../README.md)
 - [API reference](./api/README.md)
-- [Bundle size roadmap](./BUNDLE_SIZE_ROADMAP.md)
+- [Package Delivery](./guides/package-delivery.md)
 
 ## What changed
 

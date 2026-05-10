@@ -1,4 +1,4 @@
-# Asset Helpers
+# Asset Resolution
 
 These exports define how emoji visuals are resolved.
 

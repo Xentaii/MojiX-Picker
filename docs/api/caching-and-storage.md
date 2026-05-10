@@ -1,4 +1,4 @@
-# Cache and Storage
+# Caching and Storage
 
 These exports cover prepared emoji data caching, runtime spritesheet warmup,
 and local persistence helpers for recents and skin tone.
@@ -33,8 +33,8 @@ Cache Storage layer remains controlled by `cache` and `cacheName`. Pass
 
 Search-token generation can be moved off the main thread via
 `configureMojiXDataSource({ workerPreparation: true })`. See
-[Worker-Backed Preparation](./localization-and-data.md#worker-backed-preparation)
-in the localization-and-data section for how the inline-blob worker is
+[Worker-Backed Preparation](./data-and-localization.md#worker-backed-preparation)
+in the data-and-localization section for how the inline-blob worker is
 constructed and when it falls back.
 
 ### Spritesheet warmup and retained sheet

@@ -1,4 +1,4 @@
-# Types
+# TypeScript Types
 
 This file lists the TypeScript types exported from the package root.
 

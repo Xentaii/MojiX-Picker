@@ -24,5 +24,5 @@ These exports are the ready-made UI pieces available from the package root.
 
 ## Related Files
 
-- [Picker Props](./picker-props.md)
-- [Headless Primitives](./headless.md)
+- [Picker Configuration](./picker-configuration.md)
+- [Headless Primitives](./headless-primitives.md)

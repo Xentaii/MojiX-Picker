@@ -1,4 +1,4 @@
-# Picker Props
+# Picker Configuration
 
 These props are accepted by both `EmojiPicker` and `MojiX.Root`.
 
@@ -72,7 +72,7 @@ These props are accepted by both `EmojiPicker` and `MojiX.Root`.
 | `gridAssetSource` | `EmojiAssetSource` | Grid-only asset strategy. |
 | `previewAssetSource` | `EmojiAssetSource` | Preview-only asset strategy. |
 | `customEmojis` | `CustomEmoji[]` | Custom emoji records, including custom categories. |
-| `loadCategoryShards` | `boolean` | When `true`, the picker fetches missing per-category data shards on demand as the user navigates. Pair with `preloadEmojiPicker({ shards: [...] })` to ship a smaller initial payload. See [Category Shards](./localization-and-data.md#category-shards-lazy-loading). |
+| `loadCategoryShards` | `boolean` | When `true`, the picker fetches missing per-category data shards on demand as the user navigates. Pair with `preloadEmojiPicker({ shards: [...] })` to ship a smaller initial payload. See [Category Shards](./data-and-localization.md#category-shards-lazy-loading). |
 
 ## Virtualization
 

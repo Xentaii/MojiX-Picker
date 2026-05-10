@@ -116,7 +116,7 @@ await preloadEmojiPicker({ shards: ['smileys', 'people'] });
 
 The picker auto-fetches the remaining categories as the user navigates to
 them. Useful when first-paint payload size matters more than total bytes. See
-[Category Shards](./categories/localization-and-data.md#category-shards-lazy-loading).
+[Category Shards](./data-and-localization.md#category-shards-lazy-loading).
 
 ### 8. Off-main-thread preparation
 
@@ -131,21 +131,21 @@ await preloadEmojiPicker({ locale: 'en' });
 Routes search-token generation through an inlined Web Worker and silently
 falls back to the main thread on environments without `Worker`.
 
-## Categories
+## Reference Pages
 
-- [Picker Props](./categories/picker-props.md)
+- [Picker Configuration](./picker-configuration.md)
   Covers `EmojiPickerProps` and the shared prop surface used by `MojiX.Root`.
-- [Components](./categories/components.md)
+- [Components](./components.md)
   Covers the ready-made picker and the lower-level UI components.
-- [Headless Primitives](./categories/headless.md)
+- [Headless Primitives](./headless-primitives.md)
   Covers `MojiX.*` exports and state hooks.
-- [Asset Helpers](./categories/assets.md)
+- [Asset Resolution](./asset-resolution.md)
   Covers asset-source factories and asset resolution.
-- [Sprite Helpers](./categories/sprites.md)
+- [Sprite Sheets](./sprite-sheets.md)
   Covers spritesheet builders and URL helpers.
-- [Cache and Storage](./categories/cache-and-storage.md)
+- [Caching and Storage](./caching-and-storage.md)
   Covers cache warmup plus recent/skin-tone persistence helpers.
-- [Localization and Data](./categories/localization-and-data.md)
-  Covers locale helpers and unicode emoji data access.
-- [Types](./categories/types.md)
+- [Data and Localization](./data-and-localization.md)
+  Covers unicode emoji data loading, locale helpers, shards, and search indexes.
+- [TypeScript Types](./typescript-types.md)
   Covers all exported TypeScript types.

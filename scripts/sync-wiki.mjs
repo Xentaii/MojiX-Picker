@@ -37,8 +37,7 @@ function titleCase(word) {
 
 // Wiki page names join segments with '-'. We normalize each path segment by
 // converting '_' to '-' and title-casing each '-' delimited chunk so
-// 'cache-and-storage' becomes 'Cache-And-Storage' and 'BUNDLE_SIZE_ROADMAP'
-// becomes 'Bundle-Size-Roadmap'.
+// 'caching-and-storage' becomes 'Caching-And-Storage'.
 function normalizeSegment(segment) {
   return segment
     .replace(/_/g, '-')
@@ -61,6 +60,18 @@ function toWikiPageName(relativePath) {
   }
 
   return [...segments.map(normalizeSegment), normalizeSegment(stem)].join('-');
+}
+
+function extractPageTitle(content, fallback) {
+  const match = content.match(/^#\s+(.+?)\s*$/m);
+  return match ? match[1].trim().replace(/`/g, '') : fallback;
+}
+
+function groupLabel(group) {
+  if (group === 'Api') {
+    return 'API';
+  }
+  return group;
 }
 
 async function walk(dir, prefix = '') {
@@ -148,7 +159,7 @@ function rewriteLinks(content, sourceRelPath, pageByRelPath, assetByRelPath) {
   );
 }
 
-function buildSidebar(pageByRelPath) {
+function buildSidebar(pageByRelPath, pageTitleByRelPath) {
   const groups = new Map();
 
   for (const [relPath, wikiName] of pageByRelPath) {
@@ -159,7 +170,13 @@ function buildSidebar(pageByRelPath) {
     groups.set(group, list);
   }
 
-  const orderedGroups = ['Top-level', ...Array.from(groups.keys()).filter((g) => g !== 'Top-level').sort()];
+  const preferredGroups = ['Top-level', 'Guides', 'Api', 'Releases'];
+  const orderedGroups = [
+    ...preferredGroups.filter((group) => groups.has(group)),
+    ...Array.from(groups.keys())
+      .filter((group) => !preferredGroups.includes(group))
+      .sort(),
+  ];
   const lines = ['# Documentation', ''];
 
   for (const group of orderedGroups) {
@@ -168,10 +185,23 @@ function buildSidebar(pageByRelPath) {
       continue;
     }
 
-    lines.push(`## ${group}`);
-    pages.sort((a, b) => a.wikiName.localeCompare(b.wikiName));
-    for (const { wikiName } of pages) {
-      const label = wikiName === 'Home' ? 'Home' : wikiName.replace(/-/g, ' ');
+    lines.push(`## ${groupLabel(group)}`);
+    pages.sort((a, b) => {
+      if (a.wikiName === 'Home') {
+        return -1;
+      }
+      if (b.wikiName === 'Home') {
+        return 1;
+      }
+      const aLabel = pageTitleByRelPath.get(a.relPath) ?? a.wikiName;
+      const bLabel = pageTitleByRelPath.get(b.relPath) ?? b.wikiName;
+      return aLabel.localeCompare(bLabel);
+    });
+    for (const { relPath, wikiName } of pages) {
+      const label =
+        wikiName === 'Home'
+          ? 'Home'
+          : pageTitleByRelPath.get(relPath) ?? wikiName.replace(/-/g, ' ');
       lines.push(`- [${label}](${wikiName})`);
     }
     lines.push('');
@@ -214,6 +244,7 @@ async function main() {
   }
 
   const pageByRelPath = new Map();
+  const pageTitleByRelPath = new Map();
   for (const entry of pageEntries) {
     pageByRelPath.set(entry.relPath, toWikiPageName(entry.relPath));
   }
@@ -244,6 +275,8 @@ async function main() {
       continue;
     }
     const raw = await readFile(entry.fullPath, 'utf8');
+    const fallbackTitle = pageByRelPath.get(entry.relPath) ?? entry.relPath;
+    pageTitleByRelPath.set(entry.relPath, extractPageTitle(raw, fallbackTitle));
     const rewritten = rewriteLinks(
       raw,
       entry.relPath,
@@ -253,7 +286,10 @@ async function main() {
     await writeFile(join(TARGET_DIR, `${wikiName}.md`), rewritten);
   }
 
-  await writeFile(join(TARGET_DIR, '_Sidebar.md'), buildSidebar(pageByRelPath));
+  await writeFile(
+    join(TARGET_DIR, '_Sidebar.md'),
+    buildSidebar(pageByRelPath, pageTitleByRelPath),
+  );
 
   console.log(
     `Synced ${pageEntries.length} page(s) and ${assetEntries.length} asset(s) into ${relative(process.cwd(), TARGET_DIR) || '.'}`,

@@ -1,4 +1,4 @@
-# Localization and Data
+# Data and Localization
 
 These exports cover locale resolution, async locale/data loading, and access to
 the unicode emoji dataset when it has been preloaded or fetched already.
