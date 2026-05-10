@@ -26,7 +26,7 @@ MojiX provides:
 - native emoji rendering, sprite sheet rendering, and custom asset sources
 - locale packs and lazy search indexes
 
-Current release line: `1.0.0-beta.1`. The package is still in beta; the public
+Current release line: `1.0.0-beta.2`. The package is still in beta; the public
 API is intended to be stable, but the generated data contract and package shape
 may still change before a stable `1.0.0`.
 
@@ -374,13 +374,13 @@ Published packages ship:
 - `dist/data/` - emoji data, locale packs, search indexes, availability files,
   and precompressed `.br` / `.gz` assets
 
-Current `npm pack --dry-run` size for `1.0.0-beta.1`:
+Current `npm pack --dry-run` size for `1.0.0-beta.2`:
 
 | Metric | Size |
 | --- | ---: |
-| Tarball download | 1.44 MB |
-| Unpacked install | 2.93 MB |
-| Files | 184 |
+| Tarball download | 1.7 MB |
+| Unpacked install | 3.6 MB |
+| Files | 218 |
 
 This package is larger than minimal headless emoji libraries because it carries
 the data mirror needed for jsDelivr, self-hosting, and offline imports. The
@@ -445,7 +445,7 @@ examples/
 - [Migration Guide](./docs/MIGRATION.md)
 - [Bundle size roadmap](./docs/BUNDLE_SIZE_ROADMAP.md)
 - [Headless API roadmap](./docs/HEADLESS_API_ROADMAP.md)
-- [Release notes: 1.0.0-beta.1](./docs/releases/1.0.0-beta.1.md)
+- [Release notes: 1.0.0-beta.2](./docs/releases/1.0.0-beta.2.md)
 - [Generation rules](./scripts/README.md)
 - [Changelog](./CHANGELOG.md)
 - [Contributing](./CONTRIBUTING.md)

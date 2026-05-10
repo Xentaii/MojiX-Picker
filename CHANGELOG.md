@@ -6,10 +6,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [1.0.0-beta.2] - 2026-05-10
+
 ### Added
 
 - Tauri React fixture that installs the packed local package and verifies
   offline WebView usage with local data, locale packs, and local sprite sheets.
+- Root-level Tauri scripts for packing the local npm artifact, installing it
+  into the fixture, building the WebView app, and running the WebDriver smoke
+  path when `tauri-driver` is available.
+- Prepared emoji data cache with idle chunking and an optional Worker pipeline
+  to reduce repeated picker startup cost.
+- Public API and CDN E2E coverage for shard loading, prepared-cache behavior,
+  sprite caches, preload exports, and package subpaths.
+
+### Changed
+
+- Emoji category data now lazy-loads by shard, with adaptive virtual-grid
+  overscan based on scroll velocity.
+- Sprite rendering now caches generated style objects, retains warmed sprite
+  sheets, and shares decoded object URLs to reduce WebView paint/decode churn.
+- Demo UI was tightened for mobile and narrow picker layouts, with denser
+  controls and collapsible demo chrome.
+- Documentation now covers prepared caches, shard loading, sprite cache
+  behavior, and the updated public API; the docs can sync to GitHub Wiki from
+  the main branch.
+- CI/release workflows were aligned with Node 24 actions and the npm publish
+  path was kept focused on package publishing.
 
 ### Fixed
 
@@ -17,6 +40,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   explicit emoji font stack, keeping a larger adaptive virtualized window, and
   suppressing hover preview updates while virtualized grids are actively
   scrolling.
+- Tauri profiling runs no longer inject Vite's HMR websocket client or Vite
+  forward-console handling, preventing repeated `client:438` console errors
+  when the dev server is not running.
+- Tauri fixture installs now force the freshly packed local tarball so the
+  fixture lockfile cannot stay pinned to an older prerelease with the same
+  `file:` dependency path.
+- npm provenance metadata now points at the canonical repository URL.
 
 ## [1.0.0-beta.1] - 2026-04-26
 

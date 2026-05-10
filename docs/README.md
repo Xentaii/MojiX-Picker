@@ -4,7 +4,7 @@
 
 - [API Reference](./api/README.md)
 - [Migration Guide](./MIGRATION.md)
-- [Release Notes](./releases/1.0.0-beta.1.md)
+- [Release Notes](./releases/1.0.0-beta.2.md)
 - [Headless API Roadmap](./HEADLESS_API_ROADMAP.md)
 - [Bundle Size Roadmap](./BUNDLE_SIZE_ROADMAP.md)
 
