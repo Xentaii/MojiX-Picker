@@ -13,7 +13,7 @@ describe('grid virtualization helpers', () => {
   it('resolves default virtualization settings', () => {
     expect(resolveEmojiGridVirtualization()).toEqual({
       enabled: true,
-      overscanRows: 8,
+      overscanRows: 16,
       adaptiveOverscan: true,
     });
     expect(resolveEmojiGridVirtualization(false)).toEqual({
@@ -90,21 +90,21 @@ describe('grid virtualization helpers', () => {
     });
   });
 
-  it('shrinks overscan when the viewport is idle', () => {
+  it('keeps the base overscan when the viewport is idle', () => {
     expect(
       computeAdaptiveOverscanRows({
         baseOverscanRows: 8,
         velocityPxPerMs: 0,
         rowHeight: 40,
       }),
-    ).toBe(6);
+    ).toBe(8);
     expect(
       computeAdaptiveOverscanRows({
         baseOverscanRows: 4,
         velocityPxPerMs: 0,
         rowHeight: 40,
       }),
-    ).toBe(3);
+    ).toBe(4);
     // Very small base still keeps at least one overscan row.
     expect(
       computeAdaptiveOverscanRows({
@@ -129,8 +129,8 @@ describe('grid virtualization helpers', () => {
 
     expect(slow).toBeGreaterThanOrEqual(8);
     expect(fast).toBeGreaterThan(slow);
-    // Fast scroll over 100ms at 5px/ms covers ~12 rows on top of base 8.
-    expect(fast).toBeGreaterThanOrEqual(20);
+    // Fast scroll over 160ms at 5px/ms covers 20 rows on top of base 8.
+    expect(fast).toBeGreaterThanOrEqual(28);
   });
 
   it('clamps the overscan to a sensible upper bound', () => {
@@ -140,7 +140,7 @@ describe('grid virtualization helpers', () => {
         velocityPxPerMs: 999,
         rowHeight: 40,
       }),
-    ).toBeLessThanOrEqual(48);
+    ).toBeLessThanOrEqual(72);
   });
 
   it('returns the idle value for non-finite or non-positive inputs', () => {
@@ -150,14 +150,14 @@ describe('grid virtualization helpers', () => {
         velocityPxPerMs: Number.NaN,
         rowHeight: 40,
       }),
-    ).toBe(6);
+    ).toBe(8);
     expect(
       computeAdaptiveOverscanRows({
         baseOverscanRows: 8,
         velocityPxPerMs: 5,
         rowHeight: 0,
       }),
-    ).toBe(6);
+    ).toBe(8);
   });
 
   it('finds the active category from cached section offsets', () => {

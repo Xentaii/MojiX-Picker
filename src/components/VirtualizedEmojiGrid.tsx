@@ -529,6 +529,7 @@ export function VirtualizedEmojiGrid({
     velocityPxPerMs: 0,
   });
   const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressHoverDuringScrollRef = useRef(false);
   const layoutMetricsRef = useRef<EmojiGridLayoutMetrics>(
     EMPTY_LAYOUT_METRICS,
   );
@@ -794,6 +795,15 @@ export function VirtualizedEmojiGrid({
       return;
     }
 
+    if (!suppressHoverDuringScrollRef.current) {
+      suppressHoverDuringScrollRef.current = true;
+
+      if (activeCellRef.current) {
+        setActiveCellTarget(null);
+        onEmojiHover(null);
+      }
+    }
+
     const tracking = scrollVelocityRef.current;
     const now =
       typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -817,11 +827,12 @@ export function VirtualizedEmojiGrid({
 
     scrollIdleTimerRef.current = setTimeout(() => {
       scrollIdleTimerRef.current = null;
+      suppressHoverDuringScrollRef.current = false;
       scrollVelocityRef.current.velocityPxPerMs = 0;
       // Recompute the window once we settle so it shrinks back to idle size.
       scheduleVirtualWindowMeasure();
     }, 200);
-  }, [scheduleVirtualWindowMeasure]);
+  }, [onEmojiHover, scheduleVirtualWindowMeasure, setActiveCellTarget]);
 
   const handleVirtualizedScroll = useCallback(() => {
     trackScrollVelocity();
@@ -1252,6 +1263,10 @@ export function VirtualizedEmojiGrid({
     emoji: EmojiRenderable | null,
     target?: TabStop,
   ) => {
+    if (suppressHoverDuringScrollRef.current) {
+      return;
+    }
+
     if (emoji && target) {
       setActiveCellTarget(target);
       onEmojiHover(emoji);

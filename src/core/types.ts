@@ -492,9 +492,8 @@ export interface EmojiPickerVirtualization {
   overscanRows?: number;
   /**
    * When `true` (default), the rendered window expands during fast scrolling
-   * to keep upcoming rows mounted, and contracts when idle to reduce DOM
-   * pressure. Set to `false` to keep `overscanRows` constant regardless of
-   * scroll velocity.
+   * to keep upcoming rows mounted. Set to `false` to keep `overscanRows`
+   * constant regardless of scroll velocity.
    */
   adaptiveOverscan?: boolean;
 }

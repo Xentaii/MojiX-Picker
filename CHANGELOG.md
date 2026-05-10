@@ -11,6 +11,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Tauri React fixture that installs the packed local package and verifies
   offline WebView usage with local data, locale packs, and local sprite sheets.
 
+### Fixed
+
+- Improved Windows WebView2/Tauri picker smoothness by giving native emoji an
+  explicit emoji font stack, keeping a larger adaptive virtualized window, and
+  suppressing hover preview updates while virtualized grids are actively
+  scrolling.
+
 ## [1.0.0-beta.1] - 2026-04-26
 
 > Major beta release. Migration is required before upgrading apps that depend

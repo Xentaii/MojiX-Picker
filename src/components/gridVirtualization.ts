@@ -15,10 +15,9 @@ export interface EmojiGridVirtualWindow {
   rowGap: number;
 }
 
-const DEFAULT_OVERSCAN_ROWS = 8;
-const ADAPTIVE_OVERSCAN_LOOKAHEAD_MS = 100;
-const ADAPTIVE_OVERSCAN_MAX_ROWS = 48;
-const ADAPTIVE_OVERSCAN_IDLE_FACTOR = 0.75;
+const DEFAULT_OVERSCAN_ROWS = 16;
+const ADAPTIVE_OVERSCAN_LOOKAHEAD_MS = 160;
+const ADAPTIVE_OVERSCAN_MAX_ROWS = 72;
 
 export function resolveEmojiGridVirtualization(
   virtualization?: boolean | EmojiPickerVirtualization,
@@ -52,8 +51,8 @@ export function resolveEmojiGridVirtualization(
 /**
  * Returns the number of rows to render outside the viewport, scaled by the
  * current scroll velocity. When the user scrolls quickly we mount more rows
- * ahead of time to cover the upcoming travel; when idle we shrink the window
- * to reduce DOM pressure.
+ * ahead of time to cover the upcoming travel; when idle we keep the configured
+ * base window so WebView paints do not fall behind after a sudden fling.
  *
  * `velocityPxPerMs` should be the absolute value of recent scroll delta
  * divided by elapsed milliseconds. Pass `0` (or any non-positive value) to
@@ -73,7 +72,7 @@ export function computeAdaptiveOverscanRows(options: {
     !Number.isFinite(rowHeight) ||
     rowHeight <= 0
   ) {
-    return Math.max(1, Math.round(base * ADAPTIVE_OVERSCAN_IDLE_FACTOR));
+    return Math.max(1, base);
   }
 
   const lookaheadRows =
