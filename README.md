@@ -408,9 +408,14 @@ Key scripts:
 | `npm run typecheck` | Run TypeScript checks |
 | `npm run test` | Run Vitest |
 | `npm run test:e2e` | Run Playwright |
+| `npm run test:tauri:build` | Build the Tauri React fixture against the local package |
+| `npm run test:tauri:e2e` | Run the Tauri WebDriver smoke test |
+| `npm run test:tauri:install` | Reinstall the packed local MojiX tarball into the Tauri fixture |
+| `npm run dev:tauri` | Run the Tauri React fixture locally |
 | `npm run build:demo` | Build the demo app |
 | `npm run build:lib` | Build the library artifacts |
 | `npm run build:package` | Regenerate data and build package artifacts |
+| `npm run pack:local` | Create `.tmp/mojix-picker-local.tgz` for integration fixtures |
 | `npm run pack:check` | Verify package exports and packed assets |
 
 Project layout:
@@ -424,6 +429,8 @@ src/
 `-- index.ts                 Public entry
 scripts/
 `-- build-emoji-data.mjs     Generator for src/core/generated/*
+examples/
+`-- tauri-react/              Tauri WebView package integration fixture
 ```
 
 `src/core/generated/` is a build artifact. Regenerate it with

@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Tauri React fixture that installs the packed local package and verifies
+  offline WebView usage with local data, locale packs, and local sprite sheets.
+
 ## [1.0.0-beta.1] - 2026-04-26
 
 > Major beta release. Migration is required before upgrading apps that depend

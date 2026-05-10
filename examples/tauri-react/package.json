@@ -1,0 +1,31 @@
+{
+  "name": "mojix-tauri-react-fixture",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:debug": "tauri build --debug --no-bundle",
+    "test:e2e": "node ./scripts/e2e.mjs"
+  },
+  "dependencies": {
+    "mojix-picker": "file:../../.tmp/mojix-picker-local.tgz",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.1",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "selenium-webdriver": "^4.43.0",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.8"
+  }
+}

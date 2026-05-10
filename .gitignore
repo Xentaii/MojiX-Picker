@@ -5,6 +5,7 @@ node_modules/
 dist/
 coverage/
 test-results/
+target/
 *.tsbuildinfo
 src/core/generated/
 
